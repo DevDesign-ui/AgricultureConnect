@@ -4,6 +4,23 @@ import { Sprout, Mail, Lock, User, Phone, MapPin, ArrowRight } from 'lucide-reac
 import { useAuth } from '../context/AuthContext';
 import { supabase, Region } from '../lib/supabase';
 
+const defaultRegions: Region[] = [
+  { id: 'region-dakar', name: 'Dakar', code: 'DK', created_at: '' },
+  { id: 'region-thies', name: 'Thiès', code: 'TH', created_at: '' },
+  { id: 'region-diourbel', name: 'Diourbel', code: 'DB', created_at: '' },
+  { id: 'region-kaolack', name: 'Kaolack', code: 'KL', created_at: '' },
+  { id: 'region-fatick', name: 'Fatick', code: 'FK', created_at: '' },
+  { id: 'region-kolda', name: 'Kolda', code: 'KD', created_at: '' },
+  { id: 'region-ziguinchor', name: 'Ziguinchor', code: 'ZG', created_at: '' },
+  { id: 'region-sedhiou', name: 'Sédhiou', code: 'SD', created_at: '' },
+  { id: 'region-stlouis', name: 'Saint-Louis', code: 'SL', created_at: '' },
+  { id: 'region-matam', name: 'Matam', code: 'MT', created_at: '' },
+  { id: 'region-kedougou', name: 'Kédougou', code: 'KD', created_at: '' },
+  { id: 'region-tambacounda', name: 'Tambacounda', code: 'TC', created_at: '' },
+  { id: 'region-kaffrine', name: 'Kaffrine', code: 'KF', created_at: '' },
+  { id: 'region-koungheul', name: 'Koungheul', code: 'KG', created_at: '' },
+];
+
 export default function Register() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -16,13 +33,17 @@ export default function Register() {
     role: 'acheteur' as const,
     region: '',
   });
-  const [regions, setRegions] = useState<Region[]>([]);
+  const [regions, setRegions] = useState<Region[]>(defaultRegions);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     supabase.from('regions').select('*').order('name').then(({ data }) => {
-      if (data) setRegions(data as Region[]);
+      if (data && data.length > 0) {
+        setRegions(data as Region[]);
+      } else {
+        setRegions(defaultRegions);
+      }
     });
   }, []);
 
