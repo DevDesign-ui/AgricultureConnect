@@ -134,10 +134,14 @@ export default function Profile() {
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <select value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} className="input pl-10">
-              <option value="">Sélectionner</option>
-              {regions.map((r) => (
-                <option key={r.id} value={r.name}>{r.name}</option>
-              ))}
+              <option value="" disabled>
+                Sélectionnez votre région
+              </option>
+              {regions
+                .filter((r) => r.name?.trim() !== '')
+                .map((r) => (
+                  <option key={r.id} value={r.name}>{r.name}</option>
+                ))}
             </select>
           </div>
         </div>

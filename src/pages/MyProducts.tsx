@@ -204,10 +204,15 @@ export default function MyProducts() {
               <div>
                 <label className="label">Région</label>
                 <select value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} className="input">
+                  <option value="" disabled>
+                    Sélectionnez une région
+                  </option>
                   <option value="">Sans région</option>
-                  {regions.map((r) => (
-                    <option key={r.id} value={r.name}>{r.name}</option>
-                  ))}
+                  {regions
+                    .filter((r) => r.name?.trim() !== '')
+                    .map((r) => (
+                      <option key={r.id} value={r.name}>{r.name}</option>
+                    ))}
                 </select>
               </div>
               <div>
