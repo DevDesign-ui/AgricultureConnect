@@ -9,6 +9,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+if (
+  supabaseUrl.includes('your-project-ref.supabase.co') ||
+  supabaseAnonKey.includes('your-anon-key') ||
+  supabaseUrl.includes('example') ||
+  supabaseAnonKey.includes('example')
+) {
+  throw new Error(
+    'Supabase env variables are still placeholders. Replace VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env with your actual Supabase project values and restart the dev server.'
+  );
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
