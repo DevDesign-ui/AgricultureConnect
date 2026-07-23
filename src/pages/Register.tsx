@@ -51,7 +51,8 @@ export default function Register() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const { error } = await signUp(form.email, form.password, {
+    const normalizedEmail = form.email.trim().toLowerCase();
+    const { error } = await signUp(normalizedEmail, form.password, {
       nom: form.nom,
       prenom: form.prenom,
       role: form.role,
