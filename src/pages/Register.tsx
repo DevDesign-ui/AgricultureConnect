@@ -51,8 +51,7 @@ export default function Register() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const normalizedEmail = form.email.trim().toLowerCase();
-    const { error } = await signUp(normalizedEmail, form.password, {
+    const { error } = await signUp(form.email, form.password, {
       nom: form.nom,
       prenom: form.prenom,
       role: form.role,
@@ -69,9 +68,9 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-accent-50 p-4">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-600 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-600 mb-4 shadow-lg shadow-primary/10">
             <Sprout className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900">AgricultureConnect</h1>
@@ -79,7 +78,11 @@ export default function Register() {
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-bold text-slate-900 mb-6">Inscription</h2>
+          <div className="flex justify-center mb-6">
+            <span className="btn-primary w-full text-center">
+              Inscription
+            </span>
+          </div>
 
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-error-50 border border-error-200 text-error-700 text-sm">

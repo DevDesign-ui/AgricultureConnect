@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sprout, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Sprout, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -8,6 +8,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,8 +16,7 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const normalizedEmail = email.trim().toLowerCase();
-    const { error } = await signIn(normalizedEmail, password);
+    const { error } = await signIn(email, password);
     setLoading(false);
     if (error) {
       setError(error);
@@ -37,7 +37,11 @@ export default function Login() {
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-bold text-slate-900 mb-6">Connexion</h2>
+          <div className="flex justify-center mb-6">
+            <span className="btn-primary w-full text-center">
+              Connexion
+            </span>
+          </div>
 
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-error-50 border border-error-200 text-error-700 text-sm">
@@ -66,13 +70,21 @@ export default function Login() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input pl-10"
+                  className="input pl-10 pr-10"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 

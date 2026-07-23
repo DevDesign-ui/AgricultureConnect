@@ -78,18 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error.message };
 
-    if (!data.user) {
-      return { error: 'Impossible de créer l’utilisateur Supabase.' };
-    }
-
-    let session = data.session;
-    if (!session) {
-      const sessionResult = await supabase.auth.getSession();
-      session = sessionResult.data.session;
-    }
-
-    if (session) {
-      await supabase.auth.setSession(session);
+    if (data.user) {
       const { error: profileError } = await supabase.from('profiles').insert({
         user_id: data.user.id,
         email,
@@ -99,16 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         telephone: profileData.telephone,
         region: profileData.region,
       });
-      if (profileError) {
-        return { error: profileError.message };
-      }
-      return { error: null };
+      if (profileError) return { error: profileError.message };
     }
-
-    return {
-      error:
-        'Un email de confirmation a été envoyé. Vérifie ta boîte mail avant de te connecter.',
-    };
+    return { error: null };
   };
 
   const signOut = async () => {
