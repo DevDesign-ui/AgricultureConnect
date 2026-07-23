@@ -78,18 +78,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error.message };
 
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        user_id: data.user.id,
-        email,
-        nom: profileData.nom,
-        prenom: profileData.prenom,
-        role: profileData.role,
-        telephone: profileData.telephone,
-        region: profileData.region,
-      });
-      if (profileError) return { error: profileError.message };
+    if (!data.user) {
+      return { error: 'Impossible de créer l’utilisateur Supabase.' };
     }
+
+    let session = data.session;
+    if (!session) {
+      const sessionResult = await supabase.auth.getSession();
+      session = sessionResult.data.session;
+    }
+
+    if (!session) {
+      const signInResult = await supabase.auth.signInWithPassword({ email, password });
+      if (signInResult.error) {
+        return { error: signInResult.error.message || 'Impossible de se connecter après l’inscription.' };
+      }
+      session = signInResult.data.session;
+    }
+
+    if (session) {
+      await supabase.auth.setSession(session);
+    }
+
+    const { error: profileError } = await supabase.from('profiles').insert({
+      user_id: data.user.id,
+      email,
+      nom: profileData.nom,
+      prenom: profileData.prenom,
+      role: profileData.role,
+      telephone: profileData.telephone,
+      region: profileData.region,
+    });
+    if (profileError) {
+      return { error: profileError.message };
+    }
+
     return { error: null };
   };
 
