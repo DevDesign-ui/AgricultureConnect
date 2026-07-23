@@ -88,32 +88,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session = sessionResult.data.session;
     }
 
-    if (!session) {
-      const signInResult = await supabase.auth.signInWithPassword({ email, password });
-      if (signInResult.error) {
-        return { error: signInResult.error.message || 'Impossible de se connecter après l’inscription.' };
-      }
-      session = signInResult.data.session;
-    }
-
     if (session) {
       await supabase.auth.setSession(session);
+      const { error: profileError } = await supabase.from('profiles').insert({
+        user_id: data.user.id,
+        email,
+        nom: profileData.nom,
+        prenom: profileData.prenom,
+        role: profileData.role,
+        telephone: profileData.telephone,
+        region: profileData.region,
+      });
+      if (profileError) {
+        return { error: profileError.message };
+      }
+      return { error: null };
     }
 
-    const { error: profileError } = await supabase.from('profiles').insert({
-      user_id: data.user.id,
-      email,
-      nom: profileData.nom,
-      prenom: profileData.prenom,
-      role: profileData.role,
-      telephone: profileData.telephone,
-      region: profileData.region,
-    });
-    if (profileError) {
-      return { error: profileError.message };
-    }
-
-    return { error: null };
+    return {
+      error:
+        'Un email de confirmation a été envoyé. Vérifie ta boîte mail avant de te connecter.',
+    };
   };
 
   const signOut = async () => {
