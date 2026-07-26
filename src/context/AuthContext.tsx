@@ -1,4 +1,4 @@
- import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, Profile, UserRole } from '../lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -96,7 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       region: string;
     }
   ) => {
+
     // Création du compte utilisateur Supabase Auth
+    // Le trigger Supabase va créer automatiquement le profil
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -113,37 +115,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
-      return { error: error.message };
+      return {
+        error: error.message,
+      };
     }
 
-    const authUser = data.user;
-
-    if (!authUser) {
+    if (!data.user) {
       return {
         error: 'Impossible de créer votre compte pour le moment.',
       };
     }
 
-    // Création du profil dans la table profiles
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        user_id: authUser.id,
-        email: email,
-        nom: profileData.nom,
-        prenom: profileData.prenom,
-        role: profileData.role,
-        telephone: profileData.telephone,
-        region: profileData.region,
-      });
-
-    if (profileError) {
-      return {
-        error: profileError.message,
-      };
-    }
-
-    // Cas où la confirmation email est activée
+    // Confirmation email activée
     if (!data.session) {
       return {
         error:
