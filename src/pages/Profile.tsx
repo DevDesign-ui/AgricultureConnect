@@ -73,7 +73,18 @@ export default function Profile() {
     });
   };
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <div className="card max-w-2xl">
+        <h1 className="text-xl font-bold text-slate-900">Profil indisponible</h1>
+        <p className="text-slate-500 mt-2">
+          Votre session est active, mais vos informations de profil ne sont pas encore disponibles.
+          Actualisez la page ou reconnectez-vous.
+        </p>
+        <p className="text-sm text-slate-500 mt-4">Compte : {user?.email ?? 'inconnu'}</p>
+      </div>
+    );
+  }
 
   const roleIcon = profile.role === 'agriculteur' ? Sprout :
                    profile.role === 'fournisseur' ? Store :
