@@ -38,3 +38,13 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- Repair profiles created by the previous trigger when their signup metadata
+-- contains a non-administrator role.
+UPDATE public.profiles AS p
+SET role = lower(u.raw_user_meta_data ->> 'role'),
+    updated_at = now()
+FROM auth.users AS u
+WHERE p.user_id = u.id
+  AND p.role = 'admin'
+  AND lower(COALESCE(u.raw_user_meta_data ->> 'role', '')) IN ('acheteur', 'agriculteur', 'fournisseur');
