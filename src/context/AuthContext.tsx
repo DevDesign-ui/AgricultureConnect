@@ -99,7 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Création du compte utilisateur Supabase Auth
     // Le trigger Supabase va créer automatiquement le profil
-    const appUrl = (import.meta.env.VITE_APP_URL ?? window.location.origin).replace(/\/$/, '');
+    const configuredUrl = import.meta.env.VITE_APP_URL?.replace(/\/$/, '');
+    const isLocalUrl = configuredUrl?.includes('localhost') || configuredUrl?.includes('127.0.0.1');
+    const appUrl = configuredUrl && (isLocalUrl === false || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? configuredUrl
+      : window.location.origin;
 
     const { data, error } = await supabase.auth.signUp({
       email,
