@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
+    setProfile(null);
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -97,6 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   ) => {
 
+    const safeRole: Exclude<UserRole, 'admin'> = profileData.role === 'admin'
+      ? 'acheteur'
+      : profileData.role;
+
     // Création du compte utilisateur Supabase Auth
     // Le trigger Supabase va créer automatiquement le profil
     const configuredUrl = import.meta.env.VITE_APP_URL?.replace(/\/$/, '');
@@ -113,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           nom: profileData.nom,
           prenom: profileData.prenom,
-          role: profileData.role,
+          role: safeRole,
           telephone: profileData.telephone,
           region: profileData.region,
         },
