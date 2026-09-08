@@ -194,7 +194,6 @@ export default function Register() {
                   { value: 'acheteur', label: 'Acheteur' },
                   { value: 'agriculteur', label: 'Agriculteur' },
                   { value: 'fournisseur', label: 'Fournisseur' },
-                  { value: 'admin', label: 'Administrateur' },
                 ].map((r) => (
                   <label
                     key={r.value}

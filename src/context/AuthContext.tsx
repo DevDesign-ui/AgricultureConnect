@@ -99,11 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Création du compte utilisateur Supabase Auth
     // Le trigger Supabase va créer automatiquement le profil
+    const appUrl = (import.meta.env.VITE_APP_URL ?? window.location.origin).replace(/\/$/, '');
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/login`,
+        emailRedirectTo: `${appUrl}/login`,
         data: {
           nom: profileData.nom,
           prenom: profileData.prenom,

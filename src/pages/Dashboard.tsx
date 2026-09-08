@@ -17,7 +17,7 @@ interface Stats {
 }
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
     totalProducts: 0,
@@ -34,10 +34,29 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function fetchStats() {
+      if (!user || !profile) return;
+
+      const isAdmin = profile.role === 'admin';
+      const isSeller = profile.role === 'agriculteur' || profile.role === 'fournisseur';
+
+      const usersQuery = isAdmin
+        ? supabase.from('profiles').select('id', { count: 'exact', head: true })
+        : Promise.resolve({ count: null });
+      const productsQuery = isAdmin
+        ? supabase.from('products').select('id', { count: 'exact', head: true })
+        : isSeller
+          ? supabase.from('products').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+          : supabase.from('products').select('id', { count: 'exact', head: true }).eq('disponible', true);
+      const ordersQuery = isAdmin
+        ? supabase.from('orders').select('*')
+        : isSeller
+          ? supabase.from('orders').select('*').eq('seller_id', user.id)
+          : supabase.from('orders').select('*').eq('acheteur_id', user.id);
+
       const [users, products, orders] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        supabase.from('products').select('id', { count: 'exact', head: true }),
-        supabase.from('orders').select('*'),
+        usersQuery,
+        productsQuery,
+        ordersQuery,
       ]);
 
       const allOrders = orders.data ?? [];
@@ -83,22 +102,25 @@ export default function Dashboard() {
       setRecentOrders(allOrders.slice(0, 5));
 
       // Recent products
-      const { data: prods } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      let productsListQuery = supabase.from('products').select('*').order('created_at', { ascending: false }).limit(5);
+      if (isSeller) productsListQuery = productsListQuery.eq('user_id', user.id);
+      if (!isAdmin && !isSeller) productsListQuery = productsListQuery.eq('disponible', true);
+      const { data: prods } = await productsListQuery;
       setRecentProducts((prods ?? []) as Product[]);
     }
 
     fetchStats();
-  }, []);
+  }, [user, profile]);
 
+  const isSeller = profile?.role === 'agriculteur' || profile?.role === 'fournisseur';
+  const isBuyer = profile?.role === 'acheteur';
   const statCards = [
-    { label: 'Utilisateurs inscrits', value: stats.totalUsers, icon: Users, color: 'bg-accent-500' },
-    { label: 'Produits disponibles', value: stats.totalProducts, icon: Package, color: 'bg-primary-500' },
-    { label: 'Commandes', value: stats.totalOrders, icon: ShoppingBag, color: 'bg-secondary-500' },
-    { label: 'Revenus (livraisons)', value: formatPrice(stats.totalRevenue), icon: TrendingUp, color: 'bg-success-500' },
+    ...(profile?.role === 'admin'
+      ? [{ label: 'Utilisateurs inscrits', value: stats.totalUsers, icon: Users, color: 'bg-accent-500' }]
+      : []),
+    { label: isSeller ? 'Mes produits' : 'Produits disponibles', value: stats.totalProducts, icon: Package, color: 'bg-primary-500' },
+    { label: isSeller ? 'Mes ventes' : isBuyer ? 'Mes achats' : 'Commandes', value: stats.totalOrders, icon: ShoppingBag, color: 'bg-secondary-500' },
+    { label: isSeller ? 'Revenus de mes ventes' : 'Revenus (livraisons)', value: formatPrice(stats.totalRevenue), icon: TrendingUp, color: 'bg-success-500' },
   ];
 
   const COLORS = ['#f59e0b', '#0ea5e9', '#38bdf8', '#22c55e', '#ef4444'];
@@ -109,7 +131,13 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-slate-900">
           Bonjour, {profile?.prenom} {profile?.nom}
         </h1>
-        <p className="text-slate-500 mt-1">Voici un aperçu de la plateforme AgricultureConnect</p>
+        <p className="text-slate-500 mt-1">
+          {profile?.role === 'admin'
+            ? 'Voici un aperçu global de la plateforme'
+            : isSeller
+              ? 'Gérez vos produits et suivez vos ventes'
+              : 'Suivez vos achats et découvrez les produits disponibles'}
+        </p>
       </div>
 
       {/* Stat cards */}
