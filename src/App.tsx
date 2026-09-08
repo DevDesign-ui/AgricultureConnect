@@ -15,6 +15,7 @@ import Messages from './pages/Messages';
 import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import type { UserRole } from './lib/supabase';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -42,6 +43,45 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+const dashboardPaths: Record<UserRole, string> = {
+  admin: '/dashboard/admin',
+  agriculteur: '/dashboard/agriculteur',
+  fournisseur: '/dashboard/fournisseur',
+  acheteur: '/dashboard/acheteur',
+};
+
+function RoleDashboardRedirect() {
+  const { profile, loading } = useAuth();
+
+  if (loading || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  return <Navigate to={dashboardPaths[profile.role]} replace />;
+}
+
+function RoleDashboardRoute({ role }: { role: UserRole }) {
+  const { profile, loading } = useAuth();
+
+  if (loading || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (profile.role !== role) {
+    return <Navigate to={dashboardPaths[profile.role]} replace />;
+  }
+
+  return <Dashboard />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -56,7 +96,11 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="dashboard" element={<RoleDashboardRedirect />} />
+        <Route path="dashboard/admin" element={<RoleDashboardRoute role="admin" />} />
+        <Route path="dashboard/agriculteur" element={<RoleDashboardRoute role="agriculteur" />} />
+        <Route path="dashboard/fournisseur" element={<RoleDashboardRoute role="fournisseur" />} />
+        <Route path="dashboard/acheteur" element={<RoleDashboardRoute role="acheteur" />} />
         <Route path="products" element={<Products />} />
         <Route path="products/:id" element={<ProductDetail />} />
         <Route path="my-products" element={<MyProducts />} />
