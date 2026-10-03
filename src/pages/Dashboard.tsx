@@ -114,13 +114,15 @@ export default function Dashboard() {
 
   const isSeller = profile?.role === 'agriculteur' || profile?.role === 'fournisseur';
   const isBuyer = profile?.role === 'acheteur';
+  const isFarmer = profile?.role === 'agriculteur';
+  const isSupplier = profile?.role === 'fournisseur';
   const statCards = [
     ...(profile?.role === 'admin'
       ? [{ label: 'Utilisateurs inscrits', value: stats.totalUsers, icon: Users, color: 'bg-accent-500' }]
       : []),
-    { label: isSeller ? 'Mes produits' : 'Produits disponibles', value: stats.totalProducts, icon: Package, color: 'bg-primary-500' },
+    { label: isFarmer ? 'Mes produits agricoles' : isSupplier ? 'Mon catalogue' : 'Produits disponibles', value: stats.totalProducts, icon: Package, color: 'bg-primary-500' },
     { label: isSeller ? 'Mes ventes' : isBuyer ? 'Mes achats' : 'Commandes', value: stats.totalOrders, icon: ShoppingBag, color: 'bg-secondary-500' },
-    { label: isSeller ? 'Revenus de mes ventes' : 'Revenus (livraisons)', value: formatPrice(stats.totalRevenue), icon: TrendingUp, color: 'bg-success-500' },
+    { label: isBuyer ? 'Montant de mes achats livrés' : isSeller ? 'Revenus de mes ventes' : 'Revenus (livraisons)', value: formatPrice(stats.totalRevenue), icon: TrendingUp, color: 'bg-success-500' },
   ];
 
   const COLORS = ['#f59e0b', '#0ea5e9', '#38bdf8', '#22c55e', '#ef4444'];
@@ -129,15 +131,31 @@ export default function Dashboard() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
-          Bonjour, {profile?.prenom} {profile?.nom}
+          {isFarmer ? 'Espace agriculteur' : isSupplier ? 'Espace fournisseur' : isBuyer ? 'Espace acheteur' : 'Bonjour'}, {profile?.prenom} {profile?.nom}
         </h1>
         <p className="text-slate-500 mt-1">
           {profile?.role === 'admin'
             ? 'Voici un aperçu global de la plateforme'
-            : isSeller
-              ? 'Gérez vos produits et suivez vos ventes'
-              : 'Suivez vos achats et découvrez les produits disponibles'}
+            : isFarmer
+              ? 'Suivez vos produits agricoles, vos commandes et vos ventes'
+              : isSupplier
+                ? 'Gérez votre catalogue de fournitures et suivez les commandes clients'
+                : 'Suivez vos achats et découvrez les produits disponibles'}
         </p>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        {isBuyer ? (
+          <>
+            <Link to="/products" className="btn-primary">Découvrir les produits</Link>
+            <Link to="/orders" className="btn-secondary">Suivre mes achats</Link>
+          </>
+        ) : isSeller ? (
+          <>
+            <Link to="/my-products" className="btn-primary">{isFarmer ? 'Gérer mes produits agricoles' : 'Gérer mon catalogue'}</Link>
+            <Link to="/orders" className="btn-secondary">{isFarmer ? 'Suivre mes ventes' : 'Voir les commandes clients'}</Link>
+          </>
+        ) : null}
       </div>
 
       {/* Stat cards */}
@@ -191,7 +209,7 @@ export default function Dashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">Revenus par mois</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">{isBuyer ? 'Achats livrés par mois' : 'Revenus par mois'}</h3>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={revenueData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -229,7 +247,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-900">Commandes récentes</h3>
+            <h3 className="text-lg font-bold text-slate-900">{isBuyer ? 'Mes achats récents' : isFarmer ? 'Mes ventes récentes' : isSupplier ? 'Commandes clients récentes' : 'Commandes récentes'}</h3>
             <Link to="/orders" className="text-sm text-primary-600 font-semibold hover:underline">
               Voir tout
             </Link>
@@ -255,7 +273,7 @@ export default function Dashboard() {
 
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-slate-900">Produits récents</h3>
+            <h3 className="text-lg font-bold text-slate-900">{isFarmer ? 'Mes produits agricoles récents' : isSupplier ? 'Articles récents du catalogue' : isBuyer ? 'Nouveautés disponibles' : 'Produits récents'}</h3>
             <Link to="/products" className="text-sm text-primary-600 font-semibold hover:underline">
               Voir tout
             </Link>

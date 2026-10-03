@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sprout, Mail, Lock, User, Phone, MapPin, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { supabase, Region } from '../lib/supabase';
+import { supabase, Region, UserRole } from '../lib/supabase';
 
 const defaultRegions: Region[] = [
   { id: 'region-dakar', name: 'Dakar', code: 'DK', created_at: '' },
@@ -30,7 +30,7 @@ export default function Register() {
     email: '',
     password: '',
     telephone: '',
-    role: 'acheteur' as const,
+    role: 'acheteur' as Exclude<UserRole, 'admin'>,
     region: '',
   });
   const [regions, setRegions] = useState<Region[]>(defaultRegions);
@@ -62,7 +62,7 @@ export default function Register() {
     if (error) {
       setError(error);
     } else {
-      navigate('/dashboard');
+      navigate(`/dashboard/${form.role}`);
     }
   };
 

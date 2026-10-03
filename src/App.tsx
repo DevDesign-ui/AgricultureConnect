@@ -82,6 +82,34 @@ function RoleDashboardRoute({ role }: { role: UserRole }) {
   return <Dashboard />;
 }
 
+function RoleRoute({
+  allowedRoles,
+  children,
+}: {
+  allowedRoles: UserRole[];
+  children: React.ReactNode;
+}) {
+  const { profile, loading } = useAuth();
+
+  if (loading || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (!allowedRoles.includes(profile.role)) {
+    return <Navigate to={dashboardPaths[profile.role]} replace />;
+  }
+
+  return <>{children}</>;
+}
+
+const allRoles: UserRole[] = ['admin', 'agriculteur', 'fournisseur', 'acheteur'];
+const sellerRoles: UserRole[] = ['admin', 'agriculteur', 'fournisseur'];
+const buyerRoles: UserRole[] = ['admin', 'acheteur'];
+
 export default function App() {
   return (
     <Routes>
@@ -101,16 +129,16 @@ export default function App() {
         <Route path="dashboard/agriculteur" element={<RoleDashboardRoute role="agriculteur" />} />
         <Route path="dashboard/fournisseur" element={<RoleDashboardRoute role="fournisseur" />} />
         <Route path="dashboard/acheteur" element={<RoleDashboardRoute role="acheteur" />} />
-        <Route path="products" element={<Products />} />
-        <Route path="products/:id" element={<ProductDetail />} />
-        <Route path="my-products" element={<MyProducts />} />
-        <Route path="orders" element={<Orders />} />
-        <Route path="orders/:id" element={<OrderDetail />} />
-        <Route path="payments" element={<Payments />} />
-        <Route path="map" element={<MapView />} />
-        <Route path="messages" element={<Messages />} />
-        <Route path="notifications" element={<Notifications />} />
-        <Route path="profile" element={<Profile />} />
+        <Route path="products" element={<RoleRoute allowedRoles={allRoles}><Products /></RoleRoute>} />
+        <Route path="products/:id" element={<RoleRoute allowedRoles={allRoles}><ProductDetail /></RoleRoute>} />
+        <Route path="my-products" element={<RoleRoute allowedRoles={sellerRoles}><MyProducts /></RoleRoute>} />
+        <Route path="orders" element={<RoleRoute allowedRoles={allRoles}><Orders /></RoleRoute>} />
+        <Route path="orders/:id" element={<RoleRoute allowedRoles={allRoles}><OrderDetail /></RoleRoute>} />
+        <Route path="payments" element={<RoleRoute allowedRoles={buyerRoles}><Payments /></RoleRoute>} />
+        <Route path="map" element={<RoleRoute allowedRoles={allRoles}><MapView /></RoleRoute>} />
+        <Route path="messages" element={<RoleRoute allowedRoles={allRoles}><Messages /></RoleRoute>} />
+        <Route path="notifications" element={<RoleRoute allowedRoles={allRoles}><Notifications /></RoleRoute>} />
+        <Route path="profile" element={<RoleRoute allowedRoles={allRoles}><Profile /></RoleRoute>} />
         <Route
           path="admin"
           element={

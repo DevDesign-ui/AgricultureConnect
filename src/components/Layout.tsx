@@ -31,19 +31,22 @@ export default function Layout() {
     navigate('/login');
   };
 
+  const isSeller = profile?.role === 'agriculteur' || profile?.role === 'fournisseur';
+  const isBuyer = profile?.role === 'acheteur';
+  const isAdmin = profile?.role === 'admin';
   const navItems = [
     { to: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { to: '/products', label: 'Produits', icon: Package },
-    ...(profile?.role === 'agriculteur' || profile?.role === 'fournisseur' || profile?.role === 'admin'
+    ...(isSeller || isAdmin
       ? [{ to: '/my-products', label: 'Mes produits', icon: Sprout }]
       : []),
     { to: '/orders', label: 'Commandes', icon: ShoppingBag },
-    { to: '/payments', label: 'Paiements', icon: CreditCard },
+    ...(isBuyer || isAdmin ? [{ to: '/payments', label: 'Paiements', icon: CreditCard }] : []),
     { to: '/map', label: 'Carte', icon: MapPin },
     { to: '/messages', label: 'Messagerie', icon: MessageSquare },
     { to: '/notifications', label: 'Notifications', icon: Bell, badge: unreadCount },
     { to: '/profile', label: 'Mon profil', icon: User },
-    ...(profile?.role === 'admin'
+    ...(isAdmin
       ? [{ to: '/admin', label: 'Administration', icon: Settings }]
       : []),
   ];
