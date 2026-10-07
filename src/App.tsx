@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -30,6 +31,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ProfileLoadError() {
+  const { profileError, loading, refreshProfile } = useAuth();
+
+  return (
+    <section className="mx-auto max-w-2xl rounded-lg border border-error-200 bg-error-50 p-6" role="alert">
+      <h1 className="text-lg font-semibold text-error-800">Impossible de charger votre profil</h1>
+      <p className="mt-2 text-sm text-error-700">
+        {profileError ?? 'Aucun profil n’est associé à ce compte.'}
+      </p>
+      <p className="mt-3 text-sm text-slate-600">
+        Vérifiez que la migration SQL de correction des politiques RLS de profiles a été appliquée dans Supabase.
+      </p>
+      <button
+        type="button"
+        onClick={() => void refreshProfile()}
+        disabled={loading}
+        className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
+      >
+        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        Réessayer
+      </button>
+    </section>
+  );
+}
+
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth();
   if (loading) {
@@ -39,6 +65,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+  if (!profile) return <ProfileLoadError />;
   if (profile?.role !== 'admin') return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
@@ -53,13 +80,14 @@ const dashboardPaths: Record<UserRole, string> = {
 function RoleDashboardRedirect() {
   const { profile, loading } = useAuth();
 
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
   }
+  if (!profile) return <ProfileLoadError />;
 
   return <Navigate to={dashboardPaths[profile.role]} replace />;
 }
@@ -67,13 +95,14 @@ function RoleDashboardRedirect() {
 function RoleDashboardRoute({ role }: { role: UserRole }) {
   const { profile, loading } = useAuth();
 
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
   }
+  if (!profile) return <ProfileLoadError />;
 
   if (profile.role !== role) {
     return <Navigate to={dashboardPaths[profile.role]} replace />;
@@ -91,13 +120,14 @@ function RoleRoute({
 }) {
   const { profile, loading } = useAuth();
 
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
   }
+  if (!profile) return <ProfileLoadError />;
 
   if (!allowedRoles.includes(profile.role)) {
     return <Navigate to={dashboardPaths[profile.role]} replace />;
