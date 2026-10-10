@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import {
   calculateOrderAmount,
   isPaymentMethod,
@@ -12,6 +13,7 @@ import {
   getPaymentDisplayStatus,
   isProviderConfirmedPayment,
 } from '../src/lib/payment-status.ts';
+import { getPaymentFunctionErrorMessage } from '../src/lib/payment-errors.ts';
 import {
   isAllowedPaydunyaApiBaseUrl,
   isPaydunyaCheckoutUrl,
@@ -93,12 +95,27 @@ test('authenticates PayDunya callback hash using the documented SHA-512 master-k
   assert.equal(await verifyPaydunyaNotificationHash(masterKey, 'invalid'), false);
 });
 
+test('shows the payment Edge Function response instead of the generic non-2xx error', async () => {
+  const detailedError = new FunctionsHttpError(new Response(JSON.stringify({
+    code: 'PAYMENT_PROVIDER_NOT_CONFIGURED',
+    message: 'PayDunya n’est pas configuré pour ce projet.',
+  }), { status: 503, headers: { 'Content-Type': 'application/json' } }));
+  assert.equal(
+    await getPaymentFunctionErrorMessage(detailedError),
+    'PayDunya n’est pas configuré pour ce projet.'
+  );
+
+  const gatewayError = new FunctionsHttpError(new Response('Service Unavailable', { status: 503 }));
+  assert.match(await getPaymentFunctionErrorMessage(gatewayError), /HTTP 503/);
+});
+
 test('the payment UI cannot create or validate payment rows from the browser', async () => {
   const source = await readProjectFile('src/pages/Payments.tsx');
   assert.doesNotMatch(source, /\.from\(['"]payments['"]\)\s*\.insert/);
   assert.doesNotMatch(source, /statut:\s*['"]valide['"]/);
   assert.doesNotMatch(source, /Date\.now\(\)/);
   assert.match(source, /functions\.invoke\('payment-initiate'/);
+  assert.match(source, /getPaymentFunctionErrorMessage\(invokeError\)/);
   assert.match(source, /window\.location\.assign/);
   assert.doesNotMatch(source, /location\.state[^;]*amount/);
 });

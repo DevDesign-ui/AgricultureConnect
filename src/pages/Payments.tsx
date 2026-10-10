@@ -5,6 +5,7 @@ import { supabase, Payment, Order } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, formatDate, getStatusLabel, getStatusBadgeClass } from '../lib/utils';
 import { getPaymentDisplayStatus, isProviderConfirmedPayment } from '../lib/payment-status';
+import { getPaymentFunctionErrorMessage } from '../lib/payment-errors';
 
 const PAYMENT_METHODS = [
   { value: 'orange_money', label: 'Orange Money', color: 'bg-orange-500' },
@@ -106,7 +107,9 @@ export default function Payments() {
       const { data, error: invokeError } = await supabase.functions.invoke('payment-initiate', {
         body: { orderId, idempotencyKey: key },
       });
-      if (invokeError) throw new Error(invokeError.message || 'Impossible de contacter le service de paiement.');
+      if (invokeError) {
+        throw new Error(await getPaymentFunctionErrorMessage(invokeError));
+      }
       if (typeof data?.checkoutUrl !== 'string') {
         throw new Error(data?.message ?? 'Le prestataire n’a pas renvoyé de session de paiement.');
       }
