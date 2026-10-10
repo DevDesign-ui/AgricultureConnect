@@ -1,0 +1,5 @@
+[functions.payment-initiate]
+verify_jwt = true
+
+[functions.payment-notify]
+verify_jwt = false

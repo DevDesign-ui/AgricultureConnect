@@ -4,6 +4,7 @@ import { ArrowLeft, ShoppingBag, CreditCard, CheckCircle, XCircle, Truck, Packag
 import { supabase, Order, OrderItem, Product, Profile, Payment } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, formatDate, getStatusLabel, getStatusBadgeClass, createNotification } from '../lib/utils';
+import { getPaymentDisplayStatus, isProviderConfirmedPayment } from '../lib/payment-status';
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -13,7 +14,8 @@ export default function OrderDetail() {
   const [items, setItems] = useState<(OrderItem & { product?: Product })[]>([]);
   const [buyer, setBuyer] = useState<Profile | null>(null);
   const [seller, setSeller] = useState<Profile | null>(null);
-  const [payment, setPayment] = useState<Payment | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [paymentReadError, setPaymentReadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
@@ -29,7 +31,10 @@ export default function OrderDetail() {
         supabase.from('order_items').select('*').eq('commande_id', id),
         ord.acheteur_id ? supabase.from('profiles').select('*').eq('user_id', ord.acheteur_id).maybeSingle() : Promise.resolve({ data: null }),
         ord.seller_id ? supabase.from('profiles').select('*').eq('user_id', ord.seller_id).maybeSingle() : Promise.resolve({ data: null }),
-        supabase.from('payments').select('*').eq('commande_id', id).maybeSingle(),
+        supabase.from('payments')
+          .select('id, commande_id, user_id, montant, currency, methode, statut, reference, provider_event_id, provider_confirmed_at, provider_confirmation_verified, created_at, updated_at')
+          .eq('commande_id', id)
+          .order('created_at', { ascending: false }),
       ]);
 
       // Fetch products for items
@@ -42,7 +47,10 @@ export default function OrderDetail() {
       setItems(orderItems.map((i) => ({ ...i, product: prodMap[i.produit_id] })));
       if (buyerRes.data) setBuyer(buyerRes.data as Profile);
       if (sellerRes.data) setSeller(sellerRes.data as Profile);
-      if (paymentRes.data) setPayment(paymentRes.data as Payment);
+      setPayments((paymentRes.data ?? []) as Payment[]);
+      if (paymentRes.error) {
+        setPaymentReadError(`Impossible de charger l’historique des paiements : ${paymentRes.error.message}`);
+      }
       setLoading(false);
     }
     fetchOrder();
@@ -154,20 +162,39 @@ export default function OrderDetail() {
           <h3 className="font-semibold text-slate-900">Paiement</h3>
           <CreditCard className="w-5 h-5 text-slate-400" />
         </div>
-        {payment ? (
-          <div>
-            <p className="text-sm text-slate-600">Méthode: {payment.methode}</p>
-            <p className="text-sm text-slate-600">Référence: {payment.reference || 'N/A'}</p>
-            <span className={`${getStatusBadgeClass(payment.statut)} mt-2 inline-block`}>{getStatusLabel(payment.statut)}</span>
+        <p className="mb-3 text-sm text-slate-600">
+          État de la commande : {order.payment_status === 'paye' ? 'payée (confirmation vérifiée)' : 'non payée'}
+        </p>
+        {paymentReadError && (
+          <p className="mb-3 rounded border border-error-200 bg-error-50 p-3 text-sm text-error-700" role="alert">
+            {paymentReadError}
+          </p>
+        )}
+        {payments.length > 0 ? (
+          <div className="space-y-3">
+            {payments.map((payment) => (
+              <div key={payment.id} className="rounded-lg border border-slate-100 p-3">
+                <p className="text-sm text-slate-600">Méthode : {payment.methode === 'paydunya_checkout' ? 'PayDunya Checkout' : payment.methode}</p>
+                <p className="text-sm text-slate-600">Montant : {formatPrice(Number(payment.montant))}</p>
+                {payment.reference && <p className="text-xs text-slate-500">Référence : {payment.reference}</p>}
+                <span className={`${getStatusBadgeClass(getPaymentDisplayStatus(payment))} mt-2 inline-block`}>
+                  {getStatusLabel(getPaymentDisplayStatus(payment))}
+                </span>
+              </div>
+            ))}
           </div>
         ) : (
-          <div>
-            <p className="text-sm text-slate-500 mb-3">Aucun paiement enregistré</p>
-            {isBuyer && order.statut !== 'annulee' && (
-              <Link to="/payments" state={{ orderId: order.id, amount: order.total }} className="btn-primary">
-                <CreditCard className="w-4 h-4" /> Effectuer le paiement
-              </Link>
-            )}
+          <p className="text-sm text-slate-500 mb-3">Aucune tentative de paiement enregistrée</p>
+        )}
+        {isBuyer && order.payment_status !== 'paye' && order.statut !== 'annulee'
+          && order.statut !== 'livree' && !payments.some(isProviderConfirmedPayment) && (
+          <div className="mt-3">
+            <p className="mb-3 text-sm text-amber-800">
+              Le paiement réel n’est pas disponible tant qu’aucun prestataire n’est configuré.
+            </p>
+            <Link to="/payments" state={{ orderId: order.id }} className="btn-secondary">
+              <CreditCard className="w-4 h-4" /> Voir les options de paiement
+            </Link>
           </div>
         )}
       </div>

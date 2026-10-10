@@ -37,12 +37,15 @@ export function formatDate(date: string): string {
 
 export function getStatusLabel(statut: string): string {
   const labels: Record<string, string> = {
+    initie: 'Initié',
     en_attente: 'En attente',
     confirmee: 'Confirmée',
     expediee: 'Expédiée',
     livree: 'Livrée',
     annulee: 'Annulée',
     valide: 'Validé',
+    expiree: 'Expiré',
+    non_verifie: 'Statut historique non vérifié',
     echoue: 'Échoué',
     annule: 'Annulé',
   };
@@ -51,12 +54,15 @@ export function getStatusLabel(statut: string): string {
 
 export function getStatusBadgeClass(statut: string): string {
   const classes: Record<string, string> = {
+    initie: 'badge-blue',
     en_attente: 'badge-yellow',
     confirmee: 'badge-blue',
     expediee: 'badge-blue',
     livree: 'badge-green',
     annulee: 'badge-red',
     valide: 'badge-green',
+    expiree: 'badge-gray',
+    non_verifie: 'badge-gray',
     echoue: 'badge-red',
     annule: 'badge-red',
   };

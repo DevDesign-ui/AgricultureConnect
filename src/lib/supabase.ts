@@ -72,6 +72,7 @@ export interface Order {
   acheteur_id: string;
   seller_id: string | null;
   statut: 'en_attente' | 'confirmee' | 'expediee' | 'livree' | 'annulee';
+  payment_status: 'non_paye' | 'paye';
   total: number;
   adresse_livraison: string;
   notes: string;
@@ -93,9 +94,16 @@ export interface Payment {
   commande_id: string;
   user_id: string;
   montant: number;
-  methode: 'orange_money' | 'wave' | 'free_money' | 'carte_bancaire';
-  statut: 'en_attente' | 'valide' | 'echoue' | 'annule';
-  reference: string;
+  currency: 'XOF' | null;
+  methode: 'orange_money' | 'wave' | 'free_money' | 'carte_bancaire' | 'paydunya_checkout';
+  statut: 'initie' | 'en_attente' | 'valide' | 'echoue' | 'annule' | 'expiree';
+  reference: string | null;
+  idempotency_key: string | null;
+  provider_reference: string | null;
+  provider_event_id: string | null;
+  provider_confirmed_at: string | null;
+  provider_confirmation_verified: boolean;
+  provider_checkout_url?: string | null;
   created_at: string;
   updated_at: string;
 }
