@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.payment-notify]
 verify_jwt = false
+
+[functions.messaging-contacts]
+verify_jwt = true

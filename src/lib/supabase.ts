@@ -37,6 +37,15 @@ export interface Profile {
   updated_at: string;
 }
 
+export type MessagingRole = Extract<UserRole, 'agriculteur' | 'fournisseur' | 'acheteur'>;
+
+export interface MessagingContact {
+  user_id: string;
+  nom: string;
+  prenom: string;
+  role: MessagingRole;
+}
+
 export interface Category {
   id: string;
   nom: string;

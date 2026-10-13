@@ -1,16 +1,51 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Search, Send, User } from 'lucide-react';
-import { supabase, Message, Profile } from '../lib/supabase';
+import { FunctionsHttpError } from '@supabase/supabase-js';
+import { supabase, Message, MessagingContact, MessagingRole } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { formatDate, createNotification } from '../lib/utils';
+import { formatDate } from '../lib/utils';
+
+function isMessagingContact(value: unknown): value is MessagingContact {
+  if (typeof value !== 'object' || value === null) return false;
+  const contact = value as Record<string, unknown>;
+  return typeof contact.user_id === 'string'
+    && typeof contact.nom === 'string'
+    && typeof contact.prenom === 'string'
+    && (contact.role === 'acheteur' || contact.role === 'agriculteur' || contact.role === 'fournisseur');
+}
+
+async function getContactFunctionErrorMessage(error: Error): Promise<string> {
+  if (error instanceof FunctionsHttpError && error.context instanceof Response) {
+    try {
+      const body: unknown = await error.context.clone().json();
+      if (typeof body === 'object' && body !== null) {
+        const message = (body as Record<string, unknown>).message;
+        if (typeof message === 'string' && message.trim()) return message.trim().slice(0, 300);
+      }
+    } catch {
+      return `La fonction de contacts a répondu avec l’erreur HTTP ${error.context.status}.`;
+    }
+    return `La fonction de contacts a répondu avec l’erreur HTTP ${error.context.status}.`;
+  }
+  return error.message || 'Impossible de contacter le service des contacts.';
+}
+
+function getRoleLabel(role: MessagingRole): string {
+  const labels: Record<MessagingRole, string> = {
+    acheteur: 'Acheteur',
+    agriculteur: 'Agriculteur',
+    fournisseur: 'Fournisseur',
+  };
+  return labels[role];
+}
 
 export default function Messages() {
   const { user } = useAuth();
   const location = useLocation();
-  const [contacts, setContacts] = useState<Profile[]>([]);
+  const [contacts, setContacts] = useState<MessagingContact[]>([]);
   const [inboxMessages, setInboxMessages] = useState<Message[]>([]);
-  const [selectedContact, setSelectedContact] = useState<Profile | null>(null);
+  const [selectedContact, setSelectedContact] = useState<MessagingContact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [search, setSearch] = useState('');
@@ -18,6 +53,7 @@ export default function Messages() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contactLoadMessage, setContactLoadMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,8 +67,9 @@ export default function Messages() {
 
       setLoading(true);
       setError(null);
-      const [profilesResult, messagesResult] = await Promise.all([
-        supabase.from('profiles').select('*').neq('user_id', user.id),
+      setContactLoadMessage(null);
+      const [contactsResult, messagesResult] = await Promise.allSettled([
+        supabase.functions.invoke('messaging-contacts'),
         supabase
           .from('messages')
           .select('*')
@@ -41,19 +78,63 @@ export default function Messages() {
       ]);
 
       if (!active) return;
-      if (profilesResult.error || messagesResult.error) {
+      if (contactsResult.status === 'rejected') {
+        const reason = contactsResult.reason;
+        setContacts([]);
+        setContactLoadMessage(
+          `Impossible de charger les contacts : ${await getContactFunctionErrorMessage(
+            reason instanceof Error ? reason : new Error('erreur réseau inconnue')
+          )}`
+        );
+      } else if (contactsResult.value.error) {
+        setContacts([]);
+        setContactLoadMessage(
+          `Impossible de charger les contacts : ${await getContactFunctionErrorMessage(contactsResult.value.error)}`
+        );
+      } else {
+        const rawContacts = contactsResult.value.data?.contacts;
+        if (!Array.isArray(rawContacts) || !rawContacts.every(isMessagingContact)) {
+          setContacts([]);
+          setContactLoadMessage('Le service des contacts a renvoyé une réponse invalide.');
+        } else {
+          setContacts(rawContacts);
+          if (rawContacts.length === 0) {
+            setContactLoadMessage('Aucun contact actif n’est actuellement disponible.');
+          }
+        }
+      }
+      if (messagesResult.status === 'rejected') {
+        setInboxMessages([]);
         setError(
-          `Impossible de charger la messagerie : ${
-            profilesResult.error?.message ?? messagesResult.error?.message
+          `Impossible de charger vos conversations : ${
+            messagesResult.reason instanceof Error
+              ? messagesResult.reason.message
+              : 'erreur réseau inconnue'
           }`
         );
+      } else if (messagesResult.value.error) {
+        setInboxMessages([]);
+        setError(`Impossible de charger vos conversations : ${messagesResult.value.error.message}`);
+      } else {
+        setInboxMessages((messagesResult.value.data ?? []) as Message[]);
       }
-      setContacts((profilesResult.data ?? []) as Profile[]);
-      setInboxMessages((messagesResult.data ?? []) as Message[]);
       setLoading(false);
     }
 
-    void fetchInbox();
+    void fetchInbox().catch((fetchError: unknown) => {
+      if (active) {
+        setContacts([]);
+        setContactLoadMessage(
+          `Impossible de charger les contacts : ${
+            fetchError instanceof Error ? fetchError.message : 'erreur réseau inconnue'
+          }`
+        );
+        setInboxMessages([]);
+        setError('Impossible de charger les conversations. Réessayez plus tard.');
+        setLoading(false);
+      }
+    });
+
     return () => {
       active = false;
     };
@@ -62,9 +143,18 @@ export default function Messages() {
   useEffect(() => {
     const state = location.state as { receiverId?: string } | null;
     if (!state?.receiverId) return;
+    if (loading) return;
+    if (contactLoadMessage && !contactLoadMessage.startsWith('Aucun contact actif')) return;
     const contact = contacts.find((candidate) => candidate.user_id === state.receiverId);
-    if (contact) setSelectedContact(contact);
-  }, [location.state, contacts]);
+    if (contact) {
+      setSelectedContact(contact);
+      setContactLoadMessage(null);
+    } else {
+      setContactLoadMessage(
+        'Le contact demandé n’est pas disponible. Il peut être inactif ou ne pas être un acteur autorisé. Aucun message n’a été envoyé.'
+      );
+    }
+  }, [location.state, contacts, loading, contactLoadMessage]);
 
   useEffect(() => {
     let active = true;
@@ -102,11 +192,19 @@ export default function Messages() {
         addMessage(message);
         setInboxMessages((previous) => [message, ...previous.filter((item) => item.id !== message.id)]);
         if (message.expediteur_id === contactId && !message.lu) {
-          void supabase.from('messages').update({ lu: true }).eq('id', message.id);
+          void supabase.from('messages').update({ lu: true }).eq('id', message.id).then(({ error: readError }) => {
+            if (readError && active) {
+              setError(`Impossible de marquer le message comme lu : ${readError.message}`);
+            }
+          });
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
         const updatedMessage = payload.new as Message;
+        const isConversationMessage =
+          (updatedMessage.expediteur_id === currentUserId && updatedMessage.destinataire_id === contactId)
+          || (updatedMessage.expediteur_id === contactId && updatedMessage.destinataire_id === currentUserId);
+        if (!isConversationMessage) return;
         setMessages((previous) => previous.map((message) =>
           message.id === updatedMessage.id ? updatedMessage : message
         ));
@@ -184,17 +282,15 @@ export default function Messages() {
   }, [messages]);
 
   const contactSummaries = useMemo(() => {
-    const summaries = new Map<string, { latest?: Message; unread: number }>();
+    const summaries = new Map<string, Message>();
     inboxMessages.forEach((message) => {
       const contactId = message.expediteur_id === user?.id
         ? message.destinataire_id
         : message.expediteur_id;
-      const summary = summaries.get(contactId) ?? { unread: 0 };
-      if (!summary.latest || new Date(message.created_at) > new Date(summary.latest.created_at)) {
-        summary.latest = message;
+      const latestMessage = summaries.get(contactId);
+      if (!latestMessage || new Date(message.created_at) > new Date(latestMessage.created_at)) {
+        summaries.set(contactId, message);
       }
-      if (message.destinataire_id === user?.id && !message.lu) summary.unread += 1;
-      summaries.set(contactId, summary);
     });
     return summaries;
   }, [inboxMessages, user?.id]);
@@ -203,13 +299,13 @@ export default function Messages() {
     const query = search.trim().toLocaleLowerCase();
     return [...contacts]
       .filter((contact) =>
-        `${contact.prenom} ${contact.nom} ${contact.region} ${contact.role}`
+        `${contact.prenom} ${contact.nom} ${getRoleLabel(contact.role)}`
           .toLocaleLowerCase()
           .includes(query)
       )
       .sort((left, right) => {
-        const leftDate = contactSummaries.get(left.user_id)?.latest?.created_at ?? '';
-        const rightDate = contactSummaries.get(right.user_id)?.latest?.created_at ?? '';
+        const leftDate = contactSummaries.get(left.user_id)?.created_at ?? '';
+        const rightDate = contactSummaries.get(right.user_id)?.created_at ?? '';
         return rightDate.localeCompare(leftDate);
       });
   }, [contacts, contactSummaries, search]);
@@ -245,13 +341,17 @@ export default function Messages() {
     setInboxMessages((previous) => [sentMessage, ...previous.filter((message) => message.id !== sentMessage.id)]);
     setNewMessage('');
     setSending(false);
-    await createNotification(
-      selectedContact.user_id,
-      'message',
-      'Nouveau message',
-      'Vous avez reçu un message',
-      '/messages'
-    );
+    const { error: notificationError } = await supabase.from('notifications').insert({
+      user_id: selectedContact.user_id,
+      type: 'message',
+      titre: 'Nouveau message',
+      contenu: 'Vous avez reçu un message',
+      lien: '/messages',
+      lue: false,
+    });
+    if (notificationError) {
+      setError(`Message envoyé, mais la notification n’a pas pu être créée : ${notificationError.message}`);
+    }
   };
 
   if (loading) {
@@ -274,6 +374,11 @@ export default function Messages() {
           {error}
         </div>
       )}
+      {contactLoadMessage && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+          {contactLoadMessage}
+        </div>
+      )}
 
       <div className="flex h-[min(70vh,700px)] min-h-[420px] bg-white rounded-xl border border-slate-200 overflow-hidden">
         <aside className={`${selectedContact ? 'hidden' : 'flex'} w-full md:flex md:w-72 shrink-0 flex-col border-r border-slate-200`}>
@@ -294,7 +399,11 @@ export default function Messages() {
           <div className="flex-1 overflow-y-auto">
             {visibleContacts.length === 0 ? (
               <p className="text-sm text-slate-400 p-4 text-center">
-                {search ? 'Aucun contact correspondant' : 'Aucun contact disponible'}
+                {search
+                  ? 'Aucun contact correspondant'
+                  : contactLoadMessage
+                    ? 'La liste des contacts ne peut pas être chargée.'
+                    : 'Aucun contact actif n’est actuellement disponible.'}
               </p>
             ) : (
               visibleContacts.map((contact) => {
@@ -317,19 +426,8 @@ export default function Messages() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-semibold text-slate-900">{contact.prenom} {contact.nom}</p>
-                        {summary?.unread ? (
-                          <span className="min-w-5 rounded-full bg-primary-600 px-1.5 text-center text-xs font-semibold text-white">
-                            {summary.unread}
-                          </span>
-                        ) : null}
                       </div>
-                      <p className="text-xs text-slate-500">{contact.region || 'Région non renseignée'}</p>
-                      {summary?.latest && (
-                        <p className="truncate text-xs text-slate-400 mt-1">
-                          {summary.latest.expediteur_id === user?.id ? 'Vous : ' : ''}
-                          {summary.latest.contenu}
-                        </p>
-                      )}
+                      <p className="text-xs text-slate-500">{getRoleLabel(contact.role)}</p>
                     </div>
                   </button>
                 );
@@ -355,9 +453,7 @@ export default function Messages() {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-slate-900">{selectedContact.prenom} {selectedContact.nom}</p>
-                  <p className="truncate text-xs text-slate-500">
-                    {selectedContact.role} · {selectedContact.region || 'Région non renseignée'}
-                  </p>
+                  <p className="truncate text-xs text-slate-500">{getRoleLabel(selectedContact.role)}</p>
                 </div>
               </header>
 
