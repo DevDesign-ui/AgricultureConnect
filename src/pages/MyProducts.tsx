@@ -194,8 +194,11 @@ export default function MyProducts() {
               </div>
               <div>
                 <label className="label">Catégorie</label>
-                <select value={form.categorie_id} onChange={(e) => setForm({ ...form, categorie_id: e.target.value })} className="input">
-                  <option value="">Sans catégorie</option>
+                <select required={!editingProduct} value={form.categorie_id} onChange={(e) => setForm({ ...form, categorie_id: e.target.value })} className="input">
+                  <option value="" disabled={!editingProduct}>
+                    {categories.length > 0 ? 'Sélectionnez une catégorie' : 'Aucune catégorie disponible'}
+                  </option>
+                  {editingProduct && <option value="">Sans catégorie</option>}
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>{c.nom}</option>
                   ))}
@@ -203,11 +206,11 @@ export default function MyProducts() {
               </div>
               <div>
                 <label className="label">Région</label>
-                <select value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} className="input">
+                <select required={!editingProduct} value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} className="input">
                   <option value="" disabled>
-                    Sélectionnez une région
+                    {regions.length > 0 ? 'Sélectionnez une région' : 'Aucune région disponible'}
                   </option>
-                  <option value="">Sans région</option>
+                  {editingProduct && <option value="">Sans région</option>}
                   {regions
                     .filter((r) => r.name?.trim() !== '')
                     .map((r) => (
