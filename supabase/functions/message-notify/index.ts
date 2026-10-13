@@ -1,9 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  isAuthorizedMessageSender,
+  createMessageNotification,
   parseMessageId,
-  toMessageNotification,
-  type PersistedMessage,
 } from '../_shared/message-notify.ts';
 
 const corsHeaders = {
@@ -12,8 +10,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json',
 };
-
-const messagingRoles = ['admin', 'acheteur', 'agriculteur', 'fournisseur'];
 
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
@@ -66,59 +62,28 @@ export async function handler(request: Request): Promise<Response> {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: profile, error: profileError } = await admin
-    .from('profiles')
-    .select('role, is_active')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (profileError) {
-    console.error('Unable to verify message notification caller', profileError.code);
-    return jsonResponse(503, {
-      code: 'CALLER_PROFILE_LOOKUP_FAILED',
-      message: 'Impossible de vérifier votre autorisation de messagerie.',
-    });
+  const outcome = await createMessageNotification(user.id, messageId, {
+    loadProfile: async (userId) => await admin
+      .from('profiles')
+      .select('role, is_active')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    loadMessage: async (id) => await admin
+      .from('messages')
+      .select('id, expediteur_id, destinataire_id')
+      .eq('id', id)
+      .maybeSingle(),
+    upsertNotification: async (notification) => await admin
+      .from('notifications')
+      .upsert(notification, {
+        onConflict: 'source_message_id',
+        ignoreDuplicates: true,
+      }),
+  });
+  if (outcome.status >= 500) {
+    console.error('Message notification request failed', outcome.body.code);
   }
-  if (!profile || profile.is_active !== true || !messagingRoles.includes(profile.role)) {
-    return jsonResponse(403, {
-      code: 'MESSAGING_NOT_ALLOWED',
-      message: 'Votre compte n’est pas autorisé à envoyer des notifications de messagerie.',
-    });
-  }
-
-  const { data: message, error: messageError } = await admin
-    .from('messages')
-    .select('id, expediteur_id, destinataire_id')
-    .eq('id', messageId)
-    .maybeSingle();
-  if (messageError) {
-    console.error('Unable to load message for notification', messageError.code);
-    return jsonResponse(503, {
-      code: 'MESSAGE_LOOKUP_FAILED',
-      message: 'Impossible de vérifier le message à notifier.',
-    });
-  }
-  if (!message || !isAuthorizedMessageSender(user.id, message as PersistedMessage)) {
-    return jsonResponse(403, {
-      code: 'MESSAGE_NOT_OWNED',
-      message: 'Vous n’êtes pas autorisé à créer une notification pour ce message.',
-    });
-  }
-
-  const { error: notificationError } = await admin
-    .from('notifications')
-    .upsert(toMessageNotification(message as PersistedMessage), {
-      onConflict: 'source_message_id',
-      ignoreDuplicates: true,
-    });
-  if (notificationError) {
-    console.error('Unable to create message notification', notificationError.code);
-    return jsonResponse(503, {
-      code: 'NOTIFICATION_CREATE_FAILED',
-      message: 'Le message est enregistré, mais sa notification n’a pas pu être créée.',
-    });
-  }
-
-  return jsonResponse(200, { ok: true });
+  return jsonResponse(outcome.status, outcome.body);
 }
 
 if (import.meta.main) Deno.serve(handler);

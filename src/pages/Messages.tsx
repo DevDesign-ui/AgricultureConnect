@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Search, Send, User } from 'lucide-react';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase, Message, MessagingContact, MessagingRole } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatDate } from '../lib/utils';
+import { getSupabaseFunctionErrorMessage } from '../lib/supabase-function-errors';
 
 function isMessagingContact(value: unknown): value is MessagingContact {
   if (typeof value !== 'object' || value === null) return false;
@@ -13,22 +13,6 @@ function isMessagingContact(value: unknown): value is MessagingContact {
     && typeof contact.nom === 'string'
     && typeof contact.prenom === 'string'
     && (contact.role === 'acheteur' || contact.role === 'agriculteur' || contact.role === 'fournisseur');
-}
-
-async function getFunctionErrorMessage(error: Error, fallbackMessage: string): Promise<string> {
-  if (error instanceof FunctionsHttpError && error.context instanceof Response) {
-    try {
-      const body: unknown = await error.context.clone().json();
-      if (typeof body === 'object' && body !== null) {
-        const message = (body as Record<string, unknown>).message;
-        if (typeof message === 'string' && message.trim()) return message.trim().slice(0, 300);
-      }
-    } catch {
-      return `${fallbackMessage} (HTTP ${error.context.status}).`;
-    }
-    return `${fallbackMessage} (HTTP ${error.context.status}).`;
-  }
-  return error.message || fallbackMessage;
 }
 
 function getRoleLabel(role: MessagingRole): string {
@@ -82,17 +66,17 @@ export default function Messages() {
         const reason = contactsResult.reason;
         setContacts([]);
         setContactLoadMessage(
-          `Impossible de charger les contacts : ${await getFunctionErrorMessage(
+          `Impossible de charger les contacts : ${getSupabaseFunctionErrorMessage(
             reason instanceof Error ? reason : new Error('erreur réseau inconnue'),
-            'Impossible de contacter le service des contacts.'
+            'messaging-contacts'
           )}`
         );
       } else if (contactsResult.value.error) {
         setContacts([]);
         setContactLoadMessage(
-          `Impossible de charger les contacts : ${await getFunctionErrorMessage(
+          `Impossible de charger les contacts : ${getSupabaseFunctionErrorMessage(
             contactsResult.value.error,
-            'Impossible de contacter le service des contacts.'
+            'messaging-contacts'
           )}`
         );
       } else {
@@ -348,9 +332,9 @@ export default function Messages() {
       body: { messageId: sentMessage.id },
     });
     if (notificationError) {
-      const notificationErrorMessage = await getFunctionErrorMessage(
+      const notificationErrorMessage = getSupabaseFunctionErrorMessage(
         notificationError,
-        'Le service de notification a refusé la demande.'
+        'message-notify'
       );
       setError(`Message envoyé, mais la notification n’a pas pu être créée : ${notificationErrorMessage}`);
     }
