@@ -15,7 +15,7 @@ function isMessagingContact(value: unknown): value is MessagingContact {
     && (contact.role === 'acheteur' || contact.role === 'agriculteur' || contact.role === 'fournisseur');
 }
 
-async function getContactFunctionErrorMessage(error: Error): Promise<string> {
+async function getFunctionErrorMessage(error: Error, fallbackMessage: string): Promise<string> {
   if (error instanceof FunctionsHttpError && error.context instanceof Response) {
     try {
       const body: unknown = await error.context.clone().json();
@@ -24,11 +24,11 @@ async function getContactFunctionErrorMessage(error: Error): Promise<string> {
         if (typeof message === 'string' && message.trim()) return message.trim().slice(0, 300);
       }
     } catch {
-      return `La fonction de contacts a répondu avec l’erreur HTTP ${error.context.status}.`;
+      return `${fallbackMessage} (HTTP ${error.context.status}).`;
     }
-    return `La fonction de contacts a répondu avec l’erreur HTTP ${error.context.status}.`;
+    return `${fallbackMessage} (HTTP ${error.context.status}).`;
   }
-  return error.message || 'Impossible de contacter le service des contacts.';
+  return error.message || fallbackMessage;
 }
 
 function getRoleLabel(role: MessagingRole): string {
@@ -82,14 +82,18 @@ export default function Messages() {
         const reason = contactsResult.reason;
         setContacts([]);
         setContactLoadMessage(
-          `Impossible de charger les contacts : ${await getContactFunctionErrorMessage(
-            reason instanceof Error ? reason : new Error('erreur réseau inconnue')
+          `Impossible de charger les contacts : ${await getFunctionErrorMessage(
+            reason instanceof Error ? reason : new Error('erreur réseau inconnue'),
+            'Impossible de contacter le service des contacts.'
           )}`
         );
       } else if (contactsResult.value.error) {
         setContacts([]);
         setContactLoadMessage(
-          `Impossible de charger les contacts : ${await getContactFunctionErrorMessage(contactsResult.value.error)}`
+          `Impossible de charger les contacts : ${await getFunctionErrorMessage(
+            contactsResult.value.error,
+            'Impossible de contacter le service des contacts.'
+          )}`
         );
       } else {
         const rawContacts = contactsResult.value.data?.contacts;
@@ -323,7 +327,6 @@ export default function Messages() {
         expediteur_id: user.id,
         destinataire_id: selectedContact.user_id,
         contenu: content,
-        lu: false,
       })
       .select()
       .single();
@@ -341,16 +344,15 @@ export default function Messages() {
     setInboxMessages((previous) => [sentMessage, ...previous.filter((message) => message.id !== sentMessage.id)]);
     setNewMessage('');
     setSending(false);
-    const { error: notificationError } = await supabase.from('notifications').insert({
-      user_id: selectedContact.user_id,
-      type: 'message',
-      titre: 'Nouveau message',
-      contenu: 'Vous avez reçu un message',
-      lien: '/messages',
-      lue: false,
+    const { error: notificationError } = await supabase.functions.invoke('message-notify', {
+      body: { messageId: sentMessage.id },
     });
     if (notificationError) {
-      setError(`Message envoyé, mais la notification n’a pas pu être créée : ${notificationError.message}`);
+      const notificationErrorMessage = await getFunctionErrorMessage(
+        notificationError,
+        'Le service de notification a refusé la demande.'
+      );
+      setError(`Message envoyé, mais la notification n’a pas pu être créée : ${notificationErrorMessage}`);
     }
   };
 

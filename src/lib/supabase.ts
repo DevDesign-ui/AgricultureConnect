@@ -129,6 +129,7 @@ export interface Message {
 export interface Notification {
   id: string;
   user_id: string;
+  source_message_id: string | null;
   titre: string;
   contenu: string;
   type: 'nouvelle_commande' | 'validation_commande' | 'annulation_commande' | 'nouveau_produit' | 'message' | 'paiement';
