@@ -1,6 +1,8 @@
+import { useCallback, useEffect, useState } from 'react';
 import { Bell, CheckCheck, Package, ShoppingBag, CreditCard, MessageSquare, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useNotifications } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
+import { Notification, supabase } from '../lib/supabase';
 import { formatDate } from '../lib/utils';
 
 const ICON_MAP: Record<string, typeof Bell> = {
@@ -13,15 +15,89 @@ const ICON_MAP: Record<string, typeof Bell> = {
 };
 
 export default function Notifications() {
-  const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const openNotification = async (notification: (typeof notifications)[number]) => {
-    if (!notification.lue) await markAsRead(notification.id);
+  const refreshNotifications = useCallback(async () => {
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    const { data, error: queryError } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (queryError) {
+      setError(`Impossible de charger les notifications : ${queryError.message}`);
+    } else {
+      setNotifications((data ?? []) as Notification[]);
+    }
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    void refreshNotifications();
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`notifications-page-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => void refreshNotifications()
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [refreshNotifications, user]);
+
+  const openNotification = async (notification: Notification) => {
+    if (!notification.lue) {
+      const { error: updateError } = await supabase
+        .from('notifications')
+        .update({ lue: true })
+        .eq('id', notification.id)
+        .eq('user_id', user?.id);
+      if (updateError) {
+        setError(`Impossible de marquer la notification comme lue : ${updateError.message}`);
+        return;
+      }
+      setNotifications((previous) => previous.map((item) =>
+        item.id === notification.id ? { ...item, lue: true } : item
+      ));
+    }
     if (notification.type === 'message' && notification.lien?.startsWith('/messages?receiverId=')) {
       navigate(notification.lien);
     }
   };
+
+  const markAllAsRead = async () => {
+    if (!user) return;
+    const { error: updateError } = await supabase
+      .from('notifications')
+      .update({ lue: true })
+      .eq('user_id', user.id)
+      .eq('lue', false);
+    if (updateError) {
+      setError(`Impossible de marquer les notifications comme lues : ${updateError.message}`);
+      return;
+    }
+    setNotifications((previous) => previous.map((notification) => ({ ...notification, lue: true })));
+  };
+
+  const unreadCount = notifications.filter((notification) => !notification.lue).length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -31,13 +107,26 @@ export default function Notifications() {
           <p className="text-slate-500 mt-1">{unreadCount} non lue(s)</p>
         </div>
         {unreadCount > 0 && (
-          <button onClick={markAllAsRead} className="btn-secondary">
+          <button type="button" onClick={() => void markAllAsRead()} className="btn-secondary">
             <CheckCheck className="w-4 h-4" /> Tout marquer comme lu
           </button>
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {error && (
+        <div className="card border border-error-200 bg-error-50 text-error-700" role="alert">
+          <p>{error}</p>
+          <button type="button" className="mt-3 font-semibold underline" onClick={() => void refreshNotifications()}>
+            Réessayer
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="card py-12 text-center text-slate-500" role="status">
+          Chargement des notifications…
+        </div>
+      ) : notifications.length === 0 && !error ? (
         <div className="card text-center py-12">
           <Bell className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500">Aucune notification</p>
