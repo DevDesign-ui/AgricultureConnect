@@ -165,16 +165,61 @@ test('simulated upsert honoring the unique message key creates no duplicate on r
   assert.equal(notificationsByMessageId.size, 1);
 });
 
-test('SQL migration makes delivery idempotent and reserves message notifications for the server', async () => {
-  const migration = await readFile(
-    new URL('../supabase/migrations/20261013150000_secure_message_notifications.sql', import.meta.url),
-    'utf8'
-  );
-  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS notifications_source_message_id_uidx/);
-  assert.match(migration, /AS RESTRICTIVE\s+FOR INSERT TO authenticated/);
-  assert.match(migration, /AND type <> 'message'/);
-  assert.match(migration, /REVOKE INSERT \(id, user_id, titre, contenu, type, lue, lien, created_at, source_message_id\)/);
-  assert.match(migration, /GRANT INSERT \(user_id, titre, contenu, type, lue, lien\)/);
+test('message notification migrations converge on one unique index and exclude client inserts', async () => {
+  const [secureMigration, triggerMigration, routingMigration] = await Promise.all([
+    readFile(
+      new URL('../supabase/migrations/20261013150000_secure_message_notifications.sql', import.meta.url),
+      'utf8'
+    ),
+    readFile(
+      new URL('../supabase/migrations/20261014120000_create_message_notifications_on_insert.sql', import.meta.url),
+      'utf8'
+    ),
+    readFile(
+      new URL('../supabase/migrations/20261014130000_route_message_notifications.sql', import.meta.url),
+      'utf8'
+    ),
+  ]);
+  assert.match(secureMigration, /CREATE UNIQUE INDEX IF NOT EXISTS notifications_source_message_id_uidx/);
+  assert.match(secureMigration, /AS RESTRICTIVE\s+FOR INSERT TO authenticated/);
+  assert.match(secureMigration, /AND type <> 'message'/);
+  assert.match(secureMigration, /REVOKE INSERT \(id, user_id, titre, contenu, type, lue, lien, created_at, source_message_id\)/);
+  assert.match(secureMigration, /GRANT INSERT \(user_id, titre, contenu, type, lue, lien\)/);
+  assert.match(triggerMigration, /CREATE UNIQUE INDEX IF NOT EXISTS notifications_source_message_id_partial_uidx/);
+  assert.match(routingMigration, /CREATE UNIQUE INDEX IF NOT EXISTS notifications_source_message_id_uidx/);
+  assert.match(routingMigration, /DROP INDEX IF EXISTS public\.notifications_source_message_id_partial_uidx/);
+  assert.match(triggerMigration, /IF NOT EXISTS \([\s\S]*?tgname = 'create_message_notification_after_insert'/);
+  assert.match(triggerMigration, /ON CONFLICT \(source_message_id\) DO NOTHING/);
+});
+
+test('message notification opens the sender conversation and is created once for the recipient', async () => {
+  const [migration, triggerMigration, messagesPage, notificationsPage] = await Promise.all([
+    readFile(
+      new URL('../supabase/migrations/20261014130000_route_message_notifications.sql', import.meta.url),
+      'utf8'
+    ),
+    readFile(
+      new URL('../supabase/migrations/20261014120000_create_message_notifications_on_insert.sql', import.meta.url),
+      'utf8'
+    ),
+    readFile(new URL('../src/pages/Messages.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/pages/Notifications.tsx', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(migration, /SECURITY DEFINER/);
+  assert.match(migration, /SET search_path = ''\s+SET row_security = off/);
+  assert.match(triggerMigration, /AFTER INSERT ON public\.messages/);
+  assert.match(migration, /user_id,[\s\S]*?VALUES \([\s\S]*?NEW\.destinataire_id/);
+  assert.match(migration, /NEW\.id/);
+  assert.match(migration, /IF NEW\.expediteur_id IS DISTINCT FROM NEW\.destinataire_id THEN/);
+  assert.match(migration, /ON CONFLICT \(source_message_id\) DO NOTHING/);
+  assert.match(migration, /\/messages\?receiverId=' \|\| NEW\.expediteur_id::text/);
+  assert.match(migration, /ALTER FUNCTION public\.create_message_notification\(\) OWNER TO postgres/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.create_message_notification\(\)/);
+  assert.match(messagesPage, /new URLSearchParams\(location\.search\)\.get\('receiverId'\)/);
+  assert.match(notificationsPage, /navigate\(notification\.lien\)/);
+  assert.match(notificationsPage, /notification\.type === 'message'/);
+  assert.doesNotMatch(messagesPage, /functions\.invoke\(['"]message-notify/);
 });
 
 test('Edge adapter retains server-side authentication and the unique-key upsert', async () => {

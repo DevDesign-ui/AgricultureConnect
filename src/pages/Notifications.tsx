@@ -1,4 +1,5 @@
 import { Bell, CheckCheck, Package, ShoppingBag, CreditCard, MessageSquare, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
 import { formatDate } from '../lib/utils';
 
@@ -13,6 +14,14 @@ const ICON_MAP: Record<string, typeof Bell> = {
 
 export default function Notifications() {
   const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
+  const navigate = useNavigate();
+
+  const openNotification = async (notification: (typeof notifications)[number]) => {
+    if (!notification.lue) await markAsRead(notification.id);
+    if (notification.type === 'message' && notification.lien?.startsWith('/messages?receiverId=')) {
+      navigate(notification.lien);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -38,12 +47,13 @@ export default function Notifications() {
           {notifications.map((n) => {
             const Icon = ICON_MAP[n.type] ?? Bell;
             return (
-              <div
+              <button
                 key={n.id}
-                className={`card flex items-start gap-4 cursor-pointer transition-all hover:shadow-md ${
+                type="button"
+                className={`card flex w-full items-start gap-4 text-left cursor-pointer transition-all hover:shadow-md ${
                   !n.lue ? 'border-l-4 border-l-primary-500' : ''
                 }`}
-                onClick={() => !n.lue && markAsRead(n.id)}
+                onClick={() => void openNotification(n)}
               >
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                   n.lue ? 'bg-slate-100' : 'bg-primary-100'
@@ -58,7 +68,7 @@ export default function Notifications() {
                   {n.contenu && <p className="text-sm text-slate-500 mt-1">{n.contenu}</p>}
                   <p className="text-xs text-slate-400 mt-1">{formatDate(n.created_at)}</p>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

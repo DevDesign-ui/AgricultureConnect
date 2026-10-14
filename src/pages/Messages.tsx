@@ -4,7 +4,6 @@ import { ArrowLeft, MessageSquare, Search, Send, User } from 'lucide-react';
 import { supabase, Message, MessagingContact, MessagingRole } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatDate } from '../lib/utils';
-import { getSupabaseFunctionErrorMessage } from '../lib/supabase-function-errors';
 
 function isMessagingContact(value: unknown): value is MessagingContact {
   if (typeof value !== 'object' || value === null) return false;
@@ -130,10 +129,11 @@ export default function Messages() {
 
   useEffect(() => {
     const state = location.state as { receiverId?: string } | null;
-    if (!state?.receiverId) return;
+    const receiverId = state?.receiverId ?? new URLSearchParams(location.search).get('receiverId');
+    if (!receiverId) return;
     if (loading) return;
     if (contactLoadMessage && !contactLoadMessage.startsWith('Aucun contact actif')) return;
-    const contact = contacts.find((candidate) => candidate.user_id === state.receiverId);
+    const contact = contacts.find((candidate) => candidate.user_id === receiverId);
     if (contact) {
       setSelectedContact(contact);
       setContactLoadMessage(null);
@@ -142,7 +142,7 @@ export default function Messages() {
         'Le contact demandé n’est pas disponible. Il peut être inactif ou ne pas être un acteur autorisé. Aucun message n’a été envoyé.'
       );
     }
-  }, [location.state, contacts, loading, contactLoadMessage]);
+  }, [location.state, location.search, contacts, loading, contactLoadMessage]);
 
   useEffect(() => {
     let active = true;
@@ -328,16 +328,6 @@ export default function Messages() {
     setInboxMessages((previous) => [sentMessage, ...previous.filter((message) => message.id !== sentMessage.id)]);
     setNewMessage('');
     setSending(false);
-    const { error: notificationError } = await supabase.functions.invoke('message-notify', {
-      body: { messageId: sentMessage.id },
-    });
-    if (notificationError) {
-      const notificationErrorMessage = getSupabaseFunctionErrorMessage(
-        notificationError,
-        'message-notify'
-      );
-      setError(`Message envoyé, mais la notification n’a pas pu être créée : ${notificationErrorMessage}`);
-    }
   };
 
   if (loading) {
