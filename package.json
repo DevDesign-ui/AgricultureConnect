@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:payments": "node --test tests/payments.test.mjs",
-    "test:messaging": "node --experimental-strip-types --test tests/messaging-notify.test.mjs"
+    "test:messaging": "node --experimental-strip-types --test tests/messaging-notify.test.mjs",
+    "test:gallery": "node --experimental-strip-types --test tests/product-images.test.mjs"
   },
   "keywords": [],
   "author": "",

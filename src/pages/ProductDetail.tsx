@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, Package, ShoppingBag, MessageSquare, User } from 'lucide-react';
 import { supabase, Product, Profile } from '../lib/supabase';
+import { loadProductImages } from '../lib/productImages';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, createNotification } from '../lib/utils';
 
@@ -10,29 +11,54 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
+  const [selectedImage, setSelectedImage] = useState('');
   const [seller, setSeller] = useState<Profile | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [galleryError, setGalleryError] = useState('');
 
   useEffect(() => {
     async function fetchProduct() {
       if (!id) return;
-      const { data } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
-      if (data) {
-        setProduct(data as Product);
-        if (data.user_id) {
-          const { data: sellerData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', data.user_id)
-            .maybeSingle();
-          if (sellerData) setSeller(sellerData as Profile);
+      try {
+        const { data, error: productError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+        if (productError) throw productError;
+        if (data) {
+          const productData = data as Product;
+          setProduct(productData);
+          setSelectedImage(productData.images?.[0] ?? '');
+          if (productData.user_id) {
+            const { data: sellerData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', productData.user_id)
+              .maybeSingle();
+            if (sellerData) setSeller(sellerData as Profile);
+          }
+
+          try {
+            const images = await loadProductImages(supabase.storage, productData);
+            setProduct({ ...productData, images });
+            setSelectedImage(images[0] ?? '');
+          } catch (galleryLoadError) {
+            console.error('Impossible de charger toutes les photos du produit.', galleryLoadError);
+            setGalleryError('Impossible de charger toutes les photos. Les photos déjà enregistrées restent disponibles.');
+          }
         }
+      } catch (productLoadError) {
+        console.error('Impossible de charger le produit.', productLoadError);
+        setLoadError('Une erreur est survenue lors du chargement du produit.');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchProduct();
   }, [id]);
@@ -117,13 +143,16 @@ export default function ProductDetail() {
     return (
       <div className="card text-center py-12">
         <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <p className="text-slate-500">Produit introuvable</p>
+        <p role={loadError ? 'alert' : undefined} className="text-slate-500">{loadError || 'Produit introuvable'}</p>
         <Link to="/products" className="text-primary-600 font-semibold mt-2 inline-block">
           Retour aux produits
         </Link>
       </div>
     );
   }
+
+  const productImages = product.images ?? [];
+  const activeImage = productImages.includes(selectedImage) ? selectedImage : productImages[0];
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl">
@@ -132,15 +161,34 @@ export default function ProductDetail() {
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Image */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          {product.images?.[0] ? (
-            <img src={product.images[0]} alt={product.nom} className="w-full h-80 object-cover" />
-          ) : (
-            <div className="w-full h-80 flex items-center justify-center bg-slate-100">
-              <Package className="w-16 h-16 text-slate-300" />
+        {/* Product photo gallery */}
+        <div>
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            {activeImage ? (
+              <img src={activeImage} alt={product.nom} className="w-full h-80 object-cover" />
+            ) : (
+              <div className="w-full h-80 flex items-center justify-center bg-slate-100">
+                <Package className="w-16 h-16 text-slate-300" />
+              </div>
+            )}
+          </div>
+          {productImages.length > 1 && (
+            <div className="mt-3 grid grid-cols-4 gap-2" aria-label="Galerie de photos du produit">
+              {productImages.slice(1).map((image, index) => (
+                <button
+                  key={`${image}-${index + 1}`}
+                  type="button"
+                  onClick={() => setSelectedImage(image)}
+                  aria-label={`Afficher la photo ${index + 2}`}
+                  aria-pressed={activeImage === image}
+                  className={`overflow-hidden rounded-lg border-2 ${activeImage === image ? 'border-primary-600' : 'border-transparent'}`}
+                >
+                  <img src={image} alt={`${product.nom} - photo ${index + 2}`} className="h-20 w-full object-cover" />
+                </button>
+              ))}
             </div>
           )}
+          {galleryError && <p role="status" className="mt-2 text-sm text-amber-700">{galleryError}</p>}
         </div>
 
         {/* Details */}
