@@ -4,7 +4,10 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { inject } from '@vercel/analytics';
 import './index.css';
+
+inject();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

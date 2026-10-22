@@ -15,6 +15,7 @@ import {
   Sprout,
   Settings,
   ClipboardList,
+  Info,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -36,6 +37,7 @@ export default function Layout() {
   const isAdmin = profile?.role === 'admin';
   const navItems = [
     { to: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { to: '/a-propos', label: 'À propos', icon: Info },
     { to: '/products', label: 'Produits', icon: Package },
     ...(isSeller || isAdmin
       ? [{ to: '/my-products', label: 'Mes produits', icon: Sprout }]

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
+import About from './pages/About';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -143,6 +144,7 @@ const buyerRoles: UserRole[] = ['admin', 'acheteur'];
 export default function App() {
   return (
     <Routes>
+      <Route path="/a-propos" element={<About />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route
