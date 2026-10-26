@@ -170,7 +170,7 @@ export default function Register() {
                     required
                     value={form.region}
                     onChange={(e) => setForm({ ...form, region: e.target.value })}
-                    className="input pl-10"
+                    className="input pl-10 text-sm"
                   >
                     <option value="" disabled>
                       Sélectionnez votre région
@@ -201,7 +201,7 @@ export default function Register() {
                       form.role === r.value
                         ? 'border-primary-500 bg-primary-50 text-primary-700'
                         : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
+                    } ${r.value === 'fournisseur' ? 'col-span-2 w-1/2 justify-self-center' : ''}`}
                   >
                     <input
                       type="radio"
