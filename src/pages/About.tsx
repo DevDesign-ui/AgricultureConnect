@@ -27,18 +27,20 @@ const actors = [
       'Présentez vos récoltes, valorisez vos produits et développez de nouvelles possibilités de mise en relation avec des acheteurs.',
     icon: Sprout,
     tone: 'producer',
-    image: 'https://images.pexels.com/photos/35246303/pexels-photo-35246303.jpeg?auto=compress&cs=tinysrgb&w=900',
-    imageAlt: 'Un agriculteur travaille dans une rizière verdoyante.',
+    photoLabel: 'La force des récoltes',
+    image: 'https://images.pexels.com/photos/30483244/pexels-photo-30483244/free-photo-of-women-harvesting-crops-in-a-rural-setting.jpeg?auto=compress&cs=tinysrgb&w=900',
+    imageAlt: 'Des agricultrices récoltent des cultures dans un champ.',
   },
   {
     number: '02',
-    title: 'Vendeurs',
+    title: 'Fournisseurs',
     description:
       'Mettez votre catalogue en valeur et facilitez la découverte de vos produits par les clients.',
     icon: Store,
     tone: 'seller',
-    image: 'https://images.pexels.com/photos/38524672/pexels-photo-38524672.jpeg?auto=compress&cs=tinysrgb&w=900',
-    imageAlt: 'Des légumes frais disposés sur un étal de marché à Kawo, au Nigeria.',
+    photoLabel: 'La fraîcheur des étals',
+    image: 'https://images.pexels.com/photos/39916901/pexels-photo-39916901/free-photo-of-woman-selling-fresh-greens-at-outdoor-market.jpeg?auto=compress&cs=tinysrgb&w=900',
+    imageAlt: 'Une vendeuse présente des légumes frais sur un marché en plein air.',
   },
   {
     number: '03',
@@ -47,8 +49,9 @@ const actors = [
       'Découvrez les produits agricoles disponibles et identifiez plus facilement les offres adaptées à vos besoins.',
     icon: ShoppingBasket,
     tone: 'buyer',
-    image: 'https://images.pexels.com/photos/27991265/pexels-photo-27991265.jpeg?auto=compress&cs=tinysrgb&w=900',
-    imageAlt: 'Des commerçants et des clients se retrouvent sur un marché animé à Ibadan, au Nigeria.',
+    photoLabel: 'Le choix des produits frais',
+    image: 'https://images.pexels.com/photos/34523107/pexels-photo-34523107/free-photo-of-woman-shopping-for-fresh-produce-at-market.jpeg?auto=compress&cs=tinysrgb&w=900',
+    imageAlt: 'Une cliente choisit des produits frais sur un marché.',
   },
 ];
 
@@ -104,8 +107,9 @@ export default function About() {
       <section className="about-hero" aria-labelledby="about-title">
         <img
           className="about-hero-image"
-          src="https://images.pexels.com/photos/34705724/pexels-photo-34705724.jpeg?auto=compress&cs=tinysrgb&w=2000"
-          alt="Une agricultrice nigériane souriante présente sa récolte de tomates dans un champ."
+          src="https://images.pexels.com/photos/29006128/pexels-photo-29006128/free-photo-of-african-farmer-in-kaduna-nigeria-packing-harvest.jpeg?auto=compress&cs=tinysrgb&w=2000"
+          alt="Un agriculteur prépare une récolte de produits frais."
+          decoding="async"
           onError={hideUnavailableImage}
         />
         <div className="about-hero-shade" aria-hidden="true" />
@@ -123,7 +127,7 @@ export default function About() {
               Rejoindre AgricultureConnect
             </Link>
           </div>
-          <p className="about-hero-caption">Producteurs <span /> Vendeurs <span /> Acheteurs</p>
+          <p className="about-hero-caption">Producteurs <span /> Fournisseurs <span /> Acheteurs</p>
         </div>
       </section>
 
@@ -144,9 +148,10 @@ export default function About() {
         <aside className="about-intro-note">
           <div className="about-intro-photo">
             <img
-              src="https://images.pexels.com/photos/35246303/pexels-photo-35246303.jpeg?auto=compress&cs=tinysrgb&w=900"
-              alt="Un agriculteur travaille dans une rizière verdoyante."
+              src="https://images.pexels.com/photos/30255157/pexels-photo-30255157/free-photo-of-aerial-view-of-patchwork-farms-in-mau-narok-kenya.jpeg?auto=compress&cs=tinysrgb&w=900"
+              alt="Vue aérienne de parcelles agricoles cultivées."
               loading="lazy"
+              decoding="async"
               onError={hideUnavailableImage}
             />
             <span>Du champ au marché</span>
@@ -189,11 +194,12 @@ export default function About() {
           </p>
         </div>
         <div className="about-actor-grid">
-          {actors.map(({ number, title, description, icon: Icon, tone, image, imageAlt }) => (
+          {actors.map(({ number, title, description, icon: Icon, tone, photoLabel, image, imageAlt }) => (
             <article className={`about-actor-card about-actor-${tone}`} key={title}>
               <div className="about-actor-image-wrap">
-                <img src={image} alt={imageAlt} loading="lazy" onError={hideUnavailableImage} />
+                <img src={image} alt={imageAlt} loading="lazy" decoding="async" onError={hideUnavailableImage} />
                 <span className="about-actor-number">{number}</span>
+                <span className="about-actor-photo-label">{photoLabel}</span>
               </div>
               <div className="about-actor-card-content">
                 <div className="about-actor-title-row">
