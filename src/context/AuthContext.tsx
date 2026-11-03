@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, Profile, UserRole } from '../lib/supabase';
+import { getSignUpErrorMessage } from '../lib/signup-errors';
 import type { Session, User } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -135,13 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    if (error) {
-      return { error: error.message };
-    }
-
-    if (!data.user) {
-      return { error: 'Impossible de créer votre compte pour le moment.' };
-    }
+    const signupError = getSignUpErrorMessage(error, data.user);
+    if (signupError) return { error: signupError };
 
     if (!data.session) {
       return {

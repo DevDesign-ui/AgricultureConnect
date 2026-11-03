@@ -9,3 +9,6 @@ verify_jwt = true
 
 [functions.message-notify]
 verify_jwt = true
+
+[auth.email]
+enable_confirmations = true
