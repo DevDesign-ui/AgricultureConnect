@@ -39,7 +39,7 @@ const activities = [
     action: 'Voir le matériel',
     href: '/products?type=materiel_vente',
     image:
-      'https://upload.wikimedia.org/wikipedia/commons/d/dd/A_tractor_%26_planter.jpg',
+     'https://sc04.alicdn.com/kf/H3c3089ccefdb46c6b3f820461e5fdd25L.jpg',
     alt: 'Un tracteur équipé d’un semoir pour préparer les cultures.',
     icon: Tractor,
     tone: 'blue',
@@ -120,12 +120,14 @@ export default function About() {
             id="home-navigation"
             aria-label="Navigation principale"
           >
-            <Link to="/" aria-current="page" onClick={closeMenu}>Accueil</Link>
-            <Link to="/a-propos" onClick={closeMenu}>À propos</Link>
-            <Link to="/products?type=produit_agricole" onClick={closeMenu}>Produits</Link>
+            <Link to="/" aria-current="page" onClick={closeMenu}></Link>
+             {/*
+            <Link to="/a-propos" onClick={closeMenu}>À propos</Link> 
+           <Link to="/products?type=produit_agricole" onClick={closeMenu}>Produits</Link>
             <Link to="/products?type=materiel_vente" onClick={closeMenu}>Machines</Link>
             <Link to="/products?type=service_agricole" onClick={closeMenu}>Services</Link>
-            <Link className="home-login-link" to="/login" onClick={closeMenu}>Se connecter</Link>
+            */}
+            <Link className="home-login-link" to="/dashboard" onClick={closeMenu}>Retour dans la plateforme</Link>
           </nav>
         </div>
       </header>
@@ -133,25 +135,12 @@ export default function About() {
       <section className="home-hero" aria-labelledby="home-title">
         <img
           className="home-hero-image"
-          src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/Nehemiah_on_the_tractor_attached_to_a_plough_preparing_the_farmland_for_planting.jpg/1280px-Nehemiah_on_the_tractor_attached_to_a_plough_preparing_the_farmland_for_planting.jpg"
-          alt="Un agriculteur prépare un champ à l’aide d’un tracteur et d’une charrue."
-          onError={handleImageError}
+  src="https://www.entraid.com/wp-content/uploads/2023/07/GP-Achat_Photo-tracteur-6R.jpg"
+  alt="Paysage agricole avec des champs cultivés."
+  onError={handleImageError}
         />
         <div className="home-hero-shade" aria-hidden="true" />
-        <p className="home-hero-photo-credit">
-          Photo :{' '}
-          <a
-            href="https://commons.wikimedia.org/wiki/File:Nehemiah_on_the_tractor_attached_to_a_plough_preparing_the_farmland_for_planting.jpg"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Samsule2
-          </a>
-          {' · '}
-          <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">
-            CC BY-SA 4.0
-          </a>
-        </p>
+       
         <div className="home-hero-content" id="main-content">
           <p className="home-kicker home-kicker-light">Des liens plus forts, une agriculture prospère</p>
           <h1 id="home-title">Le numérique au service de <span>l’agriculture</span></h1>
