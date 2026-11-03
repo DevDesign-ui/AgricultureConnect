@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, Package, X, ImagePlus, Star } from 'lucide-react';
-import { supabase, Product, Category, Region } from '../lib/supabase';
+import { supabase, Product, Category, Region, ProductOfferType } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice } from '../lib/utils';
+import {
+  AGRICULTURAL_SERVICES,
+  getOfferPriceUnit,
+  getProductOfferType,
+  PRODUCT_OFFER_LABELS,
+  RENTAL_PRICE_UNITS,
+  SERVICE_PRICE_UNITS,
+} from '../lib/product-offers';
 
 const PRODUCT_IMAGES_BUCKET = 'agriculture-product-images';
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -31,6 +39,7 @@ export default function MyProducts() {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState({
+    type_offre: 'produit_agricole' as ProductOfferType,
     nom: '',
     description: '',
     prix: '',
@@ -38,6 +47,15 @@ export default function MyProducts() {
     unite: 'kg',
     categorie_id: '',
     region: '',
+    marque: '',
+    modele: '',
+    etat_materiel: '',
+    unite_tarifaire: 'jour',
+    duree_minimum: '',
+    caution: '',
+    conditions_offre: '',
+    type_service: '',
+    zones_intervention: [] as string[],
   });
   const [productImages, setProductImages] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -67,6 +85,7 @@ export default function MyProducts() {
     if (product) {
       setEditingProduct(product);
       setForm({
+        type_offre: getProductOfferType(product),
         nom: product.nom,
         description: product.description,
         prix: String(product.prix),
@@ -74,11 +93,38 @@ export default function MyProducts() {
         unite: product.unite,
         categorie_id: product.categorie_id ?? '',
         region: product.region,
+        marque: product.marque ?? '',
+        modele: product.modele ?? '',
+        etat_materiel: product.etat_materiel ?? '',
+        unite_tarifaire: product.unite_tarifaire ?? 'jour',
+        duree_minimum: product.duree_minimum == null ? '' : String(product.duree_minimum),
+        caution: product.caution == null ? '' : String(product.caution),
+        conditions_offre: product.conditions_offre ?? '',
+        type_service: product.type_service ?? '',
+        zones_intervention: product.zones_intervention ?? [],
       });
       setProductImages(product.images ?? []);
     } else {
       setEditingProduct(null);
-      setForm({ nom: '', description: '', prix: '', stock: '', unite: 'kg', categorie_id: '', region: '' });
+      setForm({
+        type_offre: 'produit_agricole',
+        nom: '',
+        description: '',
+        prix: '',
+        stock: '',
+        unite: 'kg',
+        categorie_id: '',
+        region: '',
+        marque: '',
+        modele: '',
+        etat_materiel: '',
+        unite_tarifaire: 'jour',
+        duree_minimum: '',
+        caution: '',
+        conditions_offre: '',
+        type_service: '',
+        zones_intervention: [],
+      });
       setProductImages([]);
     }
     setImageFiles([]);
@@ -92,6 +138,10 @@ export default function MyProducts() {
     if (!user) return;
 
     setFormError('');
+    if (form.type_offre === 'service_agricole' && form.zones_intervention.length === 0) {
+      setFormError('Sélectionnez au moins une zone d’intervention pour cette prestation.');
+      return;
+    }
     setSaving(true);
     const productId = editingProduct?.id ?? crypto.randomUUID();
     const uploadedPaths: string[] = [];
@@ -129,16 +179,31 @@ export default function MyProducts() {
       return;
     }
 
+    const isRental = form.type_offre === 'materiel_location';
+    const isService = form.type_offre === 'service_agricole';
+    const isEquipment = isRental || form.type_offre === 'materiel_vente';
+    const isPurchasable = form.type_offre === 'produit_agricole' || form.type_offre === 'materiel_vente';
+    const stock = isPurchasable ? Number(form.stock) : 0;
     const payload = {
       nom: form.nom,
       description: form.description,
       prix: Number(form.prix),
-      stock: Number(form.stock),
-      unite: form.unite,
+      stock,
+      unite: isPurchasable ? form.unite : 'offre',
       categorie_id: form.categorie_id || null,
       region: form.region,
       images,
-      disponible: Number(form.stock) > 0,
+      disponible: isPurchasable ? stock > 0 : true,
+      type_offre: form.type_offre,
+      marque: isEquipment ? form.marque.trim() || null : null,
+      modele: isEquipment ? form.modele.trim() || null : null,
+      etat_materiel: isEquipment ? form.etat_materiel || null : null,
+      unite_tarifaire: isRental || isService ? form.unite_tarifaire : null,
+      duree_minimum: isRental && form.duree_minimum ? Number(form.duree_minimum) : null,
+      caution: isRental && form.caution ? Number(form.caution) : null,
+      conditions_offre: isRental || isService ? form.conditions_offre.trim() : null,
+      type_service: isService ? form.type_service : null,
+      zones_intervention: isService ? form.zones_intervention : [],
     };
 
     try {
@@ -203,8 +268,8 @@ export default function MyProducts() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Mes produits</h1>
-          <p className="text-slate-500 mt-1">Gérez vos produits agricoles</p>
+          <h1 className="text-2xl font-bold text-slate-900">Mes offres</h1>
+          <p className="text-slate-500 mt-1">Gérez vos produits, matériels et services agricoles</p>
         </div>
         <button onClick={() => openModal(null)} className="btn-primary">
           <Plus className="w-4 h-4" /> Ajouter
@@ -221,9 +286,9 @@ export default function MyProducts() {
       {products.length === 0 ? (
         <div className="card text-center py-12">
           <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">Vous n'avez pas encore de produits</p>
+          <p className="text-slate-500">Vous n’avez pas encore publié d’offre</p>
           <button onClick={() => openModal(null)} className="btn-primary mt-4">
-            <Plus className="w-4 h-4" /> Ajouter un produit
+            <Plus className="w-4 h-4" /> Ajouter une offre
           </button>
         </div>
       ) : (
@@ -240,9 +305,17 @@ export default function MyProducts() {
                 )}
               </div>
               <div className="p-4">
+                <span className="inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
+                  {PRODUCT_OFFER_LABELS[getProductOfferType(product)]}
+                </span>
                 <h3 className="font-semibold text-slate-900 truncate">{product.nom}</h3>
-                <p className="text-lg font-bold text-primary-600 mt-1">{formatPrice(Number(product.prix))}<span className="text-xs font-normal text-slate-500">/{product.unite}</span></p>
-                <p className="text-xs text-slate-500 mt-1">Stock: {product.stock} {product.unite}</p>
+                <p className="text-lg font-bold text-primary-600 mt-1">
+                  {formatPrice(Number(product.prix))}
+                  <span className="text-xs font-normal text-slate-500">/{getOfferPriceUnit(product)}</span>
+                </p>
+                {getProductOfferType(product) === 'produit_agricole' || getProductOfferType(product) === 'materiel_vente'
+                  ? <p className="text-xs text-slate-500 mt-1">Stock: {product.stock} {product.unite}</p>
+                  : <p className="text-xs text-amber-700 mt-1">Réservation non activée</p>}
                 <div className="flex gap-2 mt-3">
                   <button onClick={() => openModal(product)} className="btn-secondary flex-1">
                     <Edit2 className="w-4 h-4" /> Modifier
@@ -263,7 +336,7 @@ export default function MyProducts() {
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-slide-up">
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">
-                {editingProduct ? 'Modifier le produit' : 'Ajouter un produit'}
+                {editingProduct ? 'Modifier l’offre' : 'Ajouter une offre'}
               </h2>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -271,19 +344,82 @@ export default function MyProducts() {
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="label">Nom du produit</label>
-                <input required value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} className="input" placeholder="Ex: Tomates fraîches" />
+                <label className="label" htmlFor="offer-type">Type d’offre</label>
+                <select
+                  id="offer-type"
+                  value={form.type_offre}
+                  onChange={(e) => setForm({ ...form, type_offre: e.target.value as ProductOfferType })}
+                  className="input"
+                  disabled={Boolean(editingProduct)}
+                >
+                  {Object.entries(PRODUCT_OFFER_LABELS).map(([type, label]) => (
+                    <option key={type} value={type}>{label}</option>
+                  ))}
+                </select>
+                {editingProduct && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Le type d’une offre publiée ne peut pas être modifié. Créez une nouvelle offre pour un autre type d’activité.
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="label" htmlFor="offer-name">
+                  {form.type_offre === 'service_agricole' ? 'Nom de la prestation' : 'Nom de l’offre'}
+                </label>
+                <input id="offer-name" required value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} className="input" placeholder={form.type_offre === 'produit_agricole' ? 'Ex: Tomates fraîches' : 'Nom de l’offre'} />
               </div>
               <div>
                 <label className="label">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input" rows={3} placeholder="Description du produit" />
               </div>
+              {form.type_offre === 'materiel_vente' || form.type_offre === 'materiel_location' ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="label" htmlFor="offer-brand">Marque</label>
+                      <input id="offer-brand" value={form.marque} onChange={(e) => setForm({ ...form, marque: e.target.value })} className="input" />
+                    </div>
+                    <div>
+                      <label className="label" htmlFor="offer-model">Modèle</label>
+                      <input id="offer-model" value={form.modele} onChange={(e) => setForm({ ...form, modele: e.target.value })} className="input" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="equipment-condition">État du matériel</label>
+                    <select id="equipment-condition" value={form.etat_materiel} onChange={(e) => setForm({ ...form, etat_materiel: e.target.value })} className="input">
+                      <option value="">Non précisé</option>
+                      <option value="neuf">Neuf</option>
+                      <option value="bon_etat">Bon état</option>
+                      <option value="usage">Occasion</option>
+                    </select>
+                  </div>
+                </>
+              ) : null}
+              {form.type_offre === 'service_agricole' && (
+                <div>
+                  <label className="label" htmlFor="service-type">Type de prestation</label>
+                  <select
+                    id="service-type"
+                    required
+                    value={form.type_service}
+                    onChange={(e) => setForm({ ...form, type_service: e.target.value })}
+                    className="input"
+                  >
+                    <option value="">Sélectionnez une prestation</option>
+                    {AGRICULTURAL_SERVICES.map((service) => (
+                      <option key={service.value} value={service.value}>{service.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Prix (FCFA)</label>
+                  <label className="label">
+                    {form.type_offre === 'produit_agricole' || form.type_offre === 'materiel_vente' ? 'Prix (FCFA)' : 'Tarif (FCFA)'}
+                  </label>
                   <input type="number" required min={0} value={form.prix} onChange={(e) => setForm({ ...form, prix: e.target.value })} className="input" placeholder="0" />
                 </div>
-                <div>
+                {(form.type_offre === 'produit_agricole' || form.type_offre === 'materiel_vente') && <div>
                   <label className="label">Unité</label>
                   <select value={form.unite} onChange={(e) => setForm({ ...form, unite: e.target.value })} className="input">
                     <option value="kg">kg</option>
@@ -291,13 +427,85 @@ export default function MyProducts() {
                     <option value="pièce">pièce</option>
                     <option value="litre">litre</option>
                     <option value="botte">botte</option>
+                    {form.type_offre === 'materiel_vente' && <option value="unité">unité</option>}
                   </select>
-                </div>
+                </div>}
               </div>
-              <div>
+              {(form.type_offre === 'produit_agricole' || form.type_offre === 'materiel_vente') && <div>
                 <label className="label">Stock</label>
                 <input type="number" required min={0} value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="input" placeholder="0" />
-              </div>
+              </div>}
+              {(form.type_offre === 'materiel_location' || form.type_offre === 'service_agricole') && (
+                <>
+                  <div>
+                    <label className="label" htmlFor="offer-price-unit">Unité de tarification</label>
+                    <select
+                      id="offer-price-unit"
+                      required
+                      value={form.unite_tarifaire}
+                      onChange={(e) => setForm({ ...form, unite_tarifaire: e.target.value })}
+                      className="input"
+                    >
+                      {(form.type_offre === 'materiel_location' ? RENTAL_PRICE_UNITS : SERVICE_PRICE_UNITS).map((unit) => (
+                        <option key={unit} value={unit}>Par {unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {form.type_offre === 'materiel_location' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="label" htmlFor="minimum-duration">Durée minimale (unités)</label>
+                        <input id="minimum-duration" type="number" min="0.5" step="0.5" value={form.duree_minimum} onChange={(e) => setForm({ ...form, duree_minimum: e.target.value })} className="input" placeholder="Ex. 1" />
+                      </div>
+                      <div>
+                        <label className="label" htmlFor="rental-deposit">Caution (FCFA, facultative)</label>
+                        <input id="rental-deposit" type="number" min={0} value={form.caution} onChange={(e) => setForm({ ...form, caution: e.target.value })} className="input" placeholder="0" />
+                      </div>
+                    </div>
+                  )}
+                  {form.type_offre === 'service_agricole' && (
+                    <fieldset>
+                      <legend className="label">Zones d’intervention</legend>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {regions.filter((region) => region.name?.trim()).map((region) => (
+                          <label key={region.id} className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={form.zones_intervention.includes(region.name)}
+                              onChange={(e) => setForm({
+                                ...form,
+                                zones_intervention: e.target.checked
+                                  ? [...form.zones_intervention, region.name]
+                                  : form.zones_intervention.filter((name) => name !== region.name),
+                              })}
+                              className="h-4 w-4 rounded text-primary-600"
+                            />
+                            {region.name}
+                          </label>
+                        ))}
+                      </div>
+                      {form.zones_intervention.length === 0 && (
+                        <p className="mt-1 text-xs text-error-600">Sélectionnez au moins une région d’intervention.</p>
+                      )}
+                    </fieldset>
+                  )}
+                  <div>
+                    <label className="label" htmlFor="offer-conditions">Conditions de l’offre</label>
+                    <textarea
+                      id="offer-conditions"
+                      required
+                      value={form.conditions_offre}
+                      onChange={(e) => setForm({ ...form, conditions_offre: e.target.value })}
+                      className="input"
+                      rows={3}
+                      placeholder="Précisez les conditions, limites ou modalités du tarif."
+                    />
+                  </div>
+                  <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                    Les réservations ne sont pas encore activées. Cette fiche présente uniquement le tarif et les conditions.
+                  </p>
+                </>
+              )}
               <div>
                 <label className="label">Catégorie</label>
                 <select required={!editingProduct} value={form.categorie_id} onChange={(e) => setForm({ ...form, categorie_id: e.target.value })} className="input">
@@ -312,7 +520,7 @@ export default function MyProducts() {
               </div>
               <div>
                 <label className="label">Région</label>
-                <select required={!editingProduct} value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} className="input">
+                <select required={!editingProduct && form.type_offre !== 'service_agricole'} value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} className="input">
                   <option value="" disabled>
                     {regions.length > 0 ? 'Sélectionnez une région' : 'Aucune région disponible'}
                   </option>

@@ -38,9 +38,9 @@ export default function Layout() {
   const navItems = [
     { to: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { to: '/a-propos', label: 'À propos', icon: Info },
-    { to: '/products', label: 'Produits', icon: Package },
+    { to: '/products', label: 'Marketplace', icon: Package },
     ...(isSeller || isAdmin
-      ? [{ to: '/my-products', label: 'Mes produits', icon: Sprout }]
+      ? [{ to: '/my-products', label: 'Mes offres', icon: Sprout }]
       : []),
     { to: '/orders', label: 'Commandes', icon: ShoppingBag },
     ...(isBuyer || isAdmin ? [{ to: '/payments', label: 'Paiements', icon: CreditCard }] : []),

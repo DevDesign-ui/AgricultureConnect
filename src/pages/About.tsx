@@ -1,286 +1,317 @@
+import { useState, type SyntheticEvent } from 'react';
 import { Link } from 'react-router-dom';
-import type { SyntheticEvent } from 'react';
 import {
-  Accessibility,
+  ArrowDown,
   ArrowRight,
   Handshake,
   Lightbulb,
+  Menu,
+  Package,
   ShieldCheck,
   ShoppingBasket,
   Sprout,
-  Store,
+  Tractor,
+  Truck,
   Wheat,
+  Wrench,
+  X,
 } from 'lucide-react';
 import './About.css';
 
-function hideUnavailableImage(event: SyntheticEvent<HTMLImageElement>) {
-  const image = event.currentTarget;
-  image.hidden = true;
-  image.parentElement?.classList.add('about-image-fallback');
-}
+const fallbackImage =
+  'https://images.pexels.com/photos/30483244/pexels-photo-30483244/free-photo-of-women-harvesting-crops-in-a-rural-setting.jpeg?auto=compress&cs=tinysrgb&w=1200';
 
-const actors = [
+const activities = [
   {
-    number: '01',
-    title: 'Producteurs',
-    description:
-      'Présentez vos récoltes, valorisez vos produits et développez de nouvelles possibilités de mise en relation avec des acheteurs.',
-    icon: Sprout,
-    tone: 'producer',
-    photoLabel: 'La force des récoltes',
-    image: 'https://images.pexels.com/photos/30483244/pexels-photo-30483244/free-photo-of-women-harvesting-crops-in-a-rural-setting.jpeg?auto=compress&cs=tinysrgb&w=900',
-    imageAlt: 'Des agricultrices récoltent des cultures dans un champ.',
-  },
-  {
-    number: '02',
-    title: 'Fournisseurs',
-    description:
-      'Mettez votre catalogue en valeur et facilitez la découverte de vos produits par les clients.',
-    icon: Store,
-    tone: 'seller',
-    photoLabel: 'La fraîcheur des étals',
-    image: 'https://images.pexels.com/photos/39916901/pexels-photo-39916901/free-photo-of-woman-selling-fresh-greens-at-outdoor-market.jpeg?auto=compress&cs=tinysrgb&w=900',
-    imageAlt: 'Une vendeuse présente des légumes frais sur un marché en plein air.',
-  },
-  {
-    number: '03',
-    title: 'Acheteurs',
-    description:
-      'Découvrez les produits agricoles disponibles et identifiez plus facilement les offres adaptées à vos besoins.',
+    title: 'Produits agricoles',
+    description: 'Céréales, fruits, légumes, semences et autres produits frais.',
+    action: 'Voir les produits',
+    href: '/products?type=produit_agricole',
+    image:
+      'https://images.pexels.com/photos/2252584/pexels-photo-2252584.jpeg?auto=compress&cs=tinysrgb&w=900',
+    alt: 'Des légumes frais colorés proposés sur un marché.',
     icon: ShoppingBasket,
-    tone: 'buyer',
-    photoLabel: 'Le choix des produits frais',
-    image: 'https://images.pexels.com/photos/34523107/pexels-photo-34523107/free-photo-of-woman-shopping-for-fresh-produce-at-market.jpeg?auto=compress&cs=tinysrgb&w=900',
-    imageAlt: 'Une cliente choisit des produits frais sur un marché.',
+    tone: 'gold',
+  },
+  {
+    title: 'Vente de matériels',
+    description: 'Tracteurs, moissonneuses, motoculteurs et équipements.',
+    action: 'Voir le matériel',
+    href: '/products?type=materiel_vente',
+    image:
+      'https://upload.wikimedia.org/wikipedia/commons/d/dd/A_tractor_%26_planter.jpg',
+    alt: 'Un tracteur équipé d’un semoir pour préparer les cultures.',
+    icon: Tractor,
+    tone: 'blue',
+  },
+  {
+    title: 'Location de matériels',
+    description: 'Des équipements proposés à l’heure, à la journée ou à la semaine.',
+    action: 'Découvrir la location',
+    href: '/products?type=materiel_location',
+    image:
+      'https://images.pexels.com/photos/1595104/pexels-photo-1595104.jpeg?auto=compress&cs=tinysrgb&w=900',
+    alt: 'Machine agricole utilisée dans un champ.',
+    icon: Wrench,
+    tone: 'green',
+  },
+  {
+    title: 'Services agricoles',
+    description: 'Labour, semis, récolte, irrigation, pulvérisation et transport.',
+    action: 'Découvrir les services',
+    href: '/products?type=service_agricole',
+    image:
+      'https://images.pexels.com/photos/30483244/pexels-photo-30483244/free-photo-of-women-harvesting-crops-in-a-rural-setting.jpeg?auto=compress&cs=tinysrgb&w=900',
+    alt: 'Des agricultrices travaillent dans un champ cultivé.',
+    icon: Truck,
+    tone: 'green',
   },
 ];
 
 const values = [
-  {
-    title: 'Accessibilité',
-    description: 'Une expérience simple et intuitive pour chacun.',
-    icon: Accessibility,
-  },
-  {
-    title: 'Confiance',
-    description: 'Des échanges transparents et responsables.',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'Innovation',
-    description: 'La technologie mise au service du secteur agricole.',
-    icon: Lightbulb,
-  },
-  {
-    title: 'Valorisation',
-    description: 'Plus de visibilité pour les productions agricoles.',
-    icon: Wheat,
-  },
-  {
-    title: 'Collaboration',
-    description: 'Des acteurs rapprochés et de nouvelles opportunités.',
-    icon: Handshake,
-  },
+  { title: 'Accessibilité', text: 'Une plateforme pensée pour tous les acteurs agricoles.', icon: Sprout },
+  { title: 'Confiance', text: 'Des offres claires et des échanges plus transparents.', icon: ShieldCheck },
+  { title: 'Innovation', text: 'Le numérique au service des besoins du terrain.', icon: Lightbulb },
+  { title: 'Valorisation', text: 'Plus de visibilité pour les productions locales.', icon: Wheat },
+  { title: 'Collaboration', text: 'Des liens renforcés entre les métiers agricoles.', icon: Handshake },
 ];
 
-export default function About() {
-  return (
-    <main className="about-page" id="debut">
-      <a className="about-skip-link" href="#contenu">
-        Aller au contenu principal
-      </a>
+function handleImageError(event: SyntheticEvent<HTMLImageElement>) {
+  const image = event.currentTarget;
+  if (image.dataset.fallbackApplied === 'true') {
+    image.hidden = true;
+    return;
+  }
+  if (image.classList.contains('home-hero-image')) {
+    image.parentElement?.querySelector('.home-hero-photo-credit')?.setAttribute('hidden', '');
+  }
+  image.dataset.fallbackApplied = 'true';
+  image.src = fallbackImage;
+}
 
-      <header className="about-header">
-        <Link className="about-brand" to="/a-propos" aria-label="AgricultureConnect, À propos">
-          <span className="about-brand-mark" aria-hidden="true">
-            <Sprout />
-          </span>
-          <span>Agriculture<span>Connect</span></span>
-        </Link>
-        <nav className="about-nav" aria-label="Navigation de la page">
-          <a href="#notre-mission">Notre mission</a>
-          <a href="#nos-valeurs">Nos valeurs</a>
-          <Link className="about-nav-cta" to="/login">Se connecter</Link>
-        </nav>
+export default function About() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
+
+  return (
+    <main className="home-page" id="top">
+      <a className="home-skip-link" href="#main-content">Aller au contenu principal</a>
+
+      <header className="home-header">
+        <div className="home-header-inner">
+          <Link className="home-brand" to="/" aria-label="AgricultureConnect, accueil" onClick={closeMenu}>
+            <span className="home-brand-mark" aria-hidden="true"><Sprout /></span>
+            <span>Agriculture<span className="home-brand-accent">Connect</span></span>
+          </Link>
+
+          <button
+            type="button"
+            className="home-menu-toggle"
+            aria-expanded={menuOpen}
+            aria-controls="home-navigation"
+            aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <X /> : <Menu />}
+          </button>
+
+          <nav
+            className={`home-navigation${menuOpen ? ' is-open' : ''}`}
+            id="home-navigation"
+            aria-label="Navigation principale"
+          >
+            <Link to="/" aria-current="page" onClick={closeMenu}>Accueil</Link>
+            <Link to="/a-propos" onClick={closeMenu}>À propos</Link>
+            <Link to="/products?type=produit_agricole" onClick={closeMenu}>Produits</Link>
+            <Link to="/products?type=materiel_vente" onClick={closeMenu}>Machines</Link>
+            <Link to="/products?type=service_agricole" onClick={closeMenu}>Services</Link>
+            <Link className="home-login-link" to="/login" onClick={closeMenu}>Se connecter</Link>
+          </nav>
+        </div>
       </header>
 
-      <section className="about-hero" aria-labelledby="about-title">
+      <section className="home-hero" aria-labelledby="home-title">
         <img
-          className="about-hero-image"
-          src="https://images.pexels.com/photos/29006128/pexels-photo-29006128/free-photo-of-african-farmer-in-kaduna-nigeria-packing-harvest.jpeg?auto=compress&cs=tinysrgb&w=2000"
-          alt="Un agriculteur prépare une récolte de produits frais."
-          decoding="async"
-          onError={hideUnavailableImage}
+          className="home-hero-image"
+          src="https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/Nehemiah_on_the_tractor_attached_to_a_plough_preparing_the_farmland_for_planting.jpg/1280px-Nehemiah_on_the_tractor_attached_to_a_plough_preparing_the_farmland_for_planting.jpg"
+          alt="Un agriculteur prépare un champ à l’aide d’un tracteur et d’une charrue."
+          onError={handleImageError}
         />
-        <div className="about-hero-shade" aria-hidden="true" />
-        <div className="about-hero-content" id="contenu">
-          <p className="about-eyebrow about-eyebrow-light">Des liens plus forts, des récoltes valorisées</p>
-          <h1 id="about-title">Le numérique au service de l’agriculture</h1>
-          <p className="about-hero-intro">
-            Connecter les producteurs, valoriser les récoltes et faciliter les échanges pour construire une agriculture pleine d’opportunités.
+        <div className="home-hero-shade" aria-hidden="true" />
+        <p className="home-hero-photo-credit">
+          Photo :{' '}
+          <a
+            href="https://commons.wikimedia.org/wiki/File:Nehemiah_on_the_tractor_attached_to_a_plough_preparing_the_farmland_for_planting.jpg"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Samsule2
+          </a>
+          {' · '}
+          <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">
+            CC BY-SA 4.0
+          </a>
+        </p>
+        <div className="home-hero-content" id="main-content">
+          <p className="home-kicker home-kicker-light">Des liens plus forts, une agriculture prospère</p>
+          <h1 id="home-title">Le numérique au service de <span>l’agriculture</span></h1>
+          <p className="home-hero-description">
+            AgricultureConnect rassemble les produits, les machines et les services agricoles pour connecter producteurs, fournisseurs et acheteurs.
           </p>
-          <div className="about-actions">
-            <Link className="about-button about-button-light" to="/products">
-              Découvrir les produits <ArrowRight aria-hidden="true" />
+          <div className="home-hero-actions">
+            <Link className="home-button home-button-gold" to="/products">
+              Découvrir la plateforme <ArrowRight aria-hidden="true" />
             </Link>
-            <Link className="about-button about-button-outline" to="/register">
+            <Link className="home-button home-button-outline" to="/register">
               Rejoindre AgricultureConnect
             </Link>
           </div>
-          <p className="about-hero-caption">Producteurs <span /> Fournisseurs <span /> Acheteurs</p>
+          <p className="home-hero-caption">Producteurs <span /> Fournisseurs <span /> Acheteurs</p>
+        </div>
+        <a className="home-scroll-cue" href="#activites" aria-label="Découvrir les activités">
+          <ArrowDown aria-hidden="true" />
+        </a>
+        <div className="home-hero-wave" aria-hidden="true"><span /><span /></div>
+      </section>
+
+      <section className="home-section home-activities" id="activites" aria-labelledby="activities-title">
+        <div className="home-section-heading">
+          <p className="home-kicker">Notre plateforme</p>
+          <h2 id="activities-title">Une solution complète pour le monde agricole</h2>
+          <p>Quatre activités complémentaires pour répondre aux besoins de la filière.</p>
+        </div>
+        <div className="home-activity-grid">
+          {activities.map((activity) => {
+            const Icon = activity.icon;
+            return (
+              <article className="home-activity-card" key={activity.title}>
+                <Link
+                  className="home-activity-image"
+                  to={activity.href}
+                  aria-label={`${activity.action} : ${activity.title}`}
+                >
+                  <img src={activity.image} alt={activity.alt} loading="lazy" decoding="async" onError={handleImageError} />
+                </Link>
+                <span className={`home-activity-icon tone-${activity.tone}`} aria-hidden="true"><Icon /></span>
+                <div className="home-activity-copy">
+                  <h3>{activity.title}</h3>
+                  <p>{activity.description}</p>
+                  <Link className="home-text-link" to={activity.href}>
+                    {activity.action} <ArrowRight aria-hidden="true" />
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <p className="home-booking-note">
+          Les offres de location et de services sont consultables dans le catalogue; la réservation en ligne n’est pas encore activée.
+        </p>
+      </section>
+
+      <section className="home-section home-about" aria-labelledby="home-about-title">
+        <div className="home-about-copy">
+          <p className="home-kicker">Qui sommes-nous ?</p>
+          <h2 id="home-about-title">Une plateforme qui rapproche les acteurs agricoles.</h2>
+          <p>
+            AgricultureConnect facilite la mise en relation entre producteurs, fournisseurs et acheteurs. Notre ambition : simplifier les échanges et contribuer au développement d’une agriculture durable en Afrique.
+          </p>
+          <Link className="home-button home-button-green" to="/a-propos">
+            En savoir plus <ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
+        <div className="home-about-visual">
+          <img
+            src="https://images.pexels.com/photos/30255157/pexels-photo-30255157/free-photo-of-aerial-view-of-patchwork-farms-in-mau-narok-kenya.jpeg?auto=compress&cs=tinysrgb&w=1200"
+            alt="Parcelles agricoles cultivées dans un paysage rural africain."
+            loading="lazy"
+            decoding="async"
+            onError={handleImageError}
+          />
+          <span className="home-photo-caption"><Sprout aria-hidden="true" /> Du champ au marché</span>
         </div>
       </section>
 
-      <section className="about-intro about-section" aria-labelledby="about-who-title">
-        <div className="about-section-label">
-          <span>01</span>
-          <p className="about-eyebrow">Qui sommes-nous ?</p>
-        </div>
-        <div className="about-intro-copy">
-          <h2 id="about-who-title">Une plateforme qui rapproche les acteurs agricoles.</h2>
-          <p>
-            AgricultureConnect est une plateforme numérique qui facilite la mise en relation entre producteurs agricoles, vendeurs et acheteurs.
-          </p>
-          <p>
-            Notre ambition : simplifier la commercialisation des produits agricoles, favoriser les échanges et contribuer à la transformation numérique du secteur.
-          </p>
-        </div>
-        <aside className="about-intro-note">
-          <div className="about-intro-photo">
+      <section className="home-why" aria-labelledby="why-title">
+        <div className="home-why-inner">
+          <div className="home-why-copy">
+            <p className="home-kicker">Pourquoi AgricultureConnect ?</p>
+            <h2 id="why-title">Faire grandir les opportunités agricoles.</h2>
+            <ul>
+              <li><span><Package aria-hidden="true" /></span>Accédez aux produits, équipements et services agricoles.</li>
+              <li><span><ShieldCheck aria-hidden="true" /></span>Découvrez des offres détaillées et des informations utiles.</li>
+              <li><span><Handshake aria-hidden="true" /></span>Renforcez les échanges entre les acteurs du secteur.</li>
+            </ul>
+          </div>
+          <div className="home-why-photo">
             <img
-              src="https://images.pexels.com/photos/30255157/pexels-photo-30255157/free-photo-of-aerial-view-of-patchwork-farms-in-mau-narok-kenya.jpeg?auto=compress&cs=tinysrgb&w=900"
-              alt="Vue aérienne de parcelles agricoles cultivées."
+              src="https://images.pexels.com/photos/30483244/pexels-photo-30483244/free-photo-of-women-harvesting-crops-in-a-rural-setting.jpeg?auto=compress&cs=tinysrgb&w=1200"
+              alt="Des travailleuses agricoles récoltent des cultures dans un champ."
               loading="lazy"
               decoding="async"
-              onError={hideUnavailableImage}
+              onError={handleImageError}
             />
-            <span>Du champ au marché</span>
-          </div>
-          <div className="about-intro-note-copy">
-            <Sprout aria-hidden="true" />
-            <p>Des productions locales mieux visibles. Des échanges plus simples. Des opportunités à portée de main.</p>
-          </div>
-        </aside>
-      </section>
-
-      <section className="about-why" aria-labelledby="about-why-title">
-        <div className="about-why-inner">
-          <div className="about-why-heading">
-            <p className="about-eyebrow">Pourquoi AgricultureConnect ?</p>
-            <h2 id="about-why-title">Faire tomber les barrières entre l’offre et la demande.</h2>
-          </div>
-          <div className="about-why-copy">
-            <p>
-              Certains produits agricoles manquent de visibilité. Trouver des acheteurs reste difficile et l’accès à certaines opportunités commerciales est limité.
-            </p>
-            <p>
-              AgricultureConnect est un outil numérique pensé pour faciliter les échanges entre les acteurs agricoles et rendre les offres plus faciles à découvrir.
-            </p>
-          </div>
-          <div className="about-challenges" aria-label="Défis auxquels répond la plateforme">
-            <div><span>01</span><p>Visibilité des produits</p></div>
-            <div><span>02</span><p>Accès aux acheteurs</p></div>
-            <div><span>03</span><p>Opportunités commerciales</p></div>
+            <span>La force du travail collectif</span>
           </div>
         </div>
       </section>
 
-      <section className="about-actors about-section" aria-labelledby="about-actors-title">
-        <div className="about-heading-centered">
-          <p className="about-eyebrow">Une plateforme pour chaque acteur</p>
-          <h2 id="about-actors-title">Chacun a sa place dans la chaîne.</h2>
-          <p className="about-heading-intro">
-            Des récoltes aux étals, chaque acteur contribue à faire circuler les produits agricoles.
-          </p>
+      <section className="home-section home-values" aria-labelledby="values-title">
+        <div className="home-section-heading">
+          <p className="home-kicker">Nos valeurs</p>
+          <h2 id="values-title">Des principes qui nous guident</h2>
         </div>
-        <div className="about-actor-grid">
-          {actors.map(({ number, title, description, icon: Icon, tone, photoLabel, image, imageAlt }) => (
-            <article className={`about-actor-card about-actor-${tone}`} key={title}>
-              <div className="about-actor-image-wrap">
-                <img src={image} alt={imageAlt} loading="lazy" decoding="async" onError={hideUnavailableImage} />
-                <span className="about-actor-number">{number}</span>
-                <span className="about-actor-photo-label">{photoLabel}</span>
-              </div>
-              <div className="about-actor-card-content">
-                <div className="about-actor-title-row">
-                  <h3>{title}</h3>
-                  <span className="about-actor-icon"><Icon aria-hidden="true" /></span>
-                </div>
-                <p>{description}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="about-purpose" id="notre-mission" aria-label="Notre mission et notre vision">
-        <article className="about-purpose-block about-mission">
-          <div className="about-purpose-kicker">
-            <p className="about-eyebrow">Notre mission</p>
-            <Sprout aria-hidden="true" />
-          </div>
-          <h2>Faire circuler les opportunités.</h2>
-          <p>
-            Faciliter les échanges entre les acteurs agricoles en mettant le numérique au service de la visibilité des produits, de la commercialisation et de l’accès aux opportunités du marché.
-          </p>
-        </article>
-        <article className="about-purpose-block about-vision">
-          <div className="about-purpose-kicker">
-            <p className="about-eyebrow">Notre vision</p>
-            <Wheat aria-hidden="true" />
-          </div>
-          <h2>Une agriculture connectée et compétitive.</h2>
-          <p>
-            Contribuer à construire une agriculture plus connectée, accessible et compétitive, qui valorise les productions locales et favorise les relations entre producteurs, vendeurs et acheteurs.
-          </p>
-        </article>
-      </section>
-
-      <section className="about-values about-section" id="nos-valeurs" aria-labelledby="about-values-title">
-        <div className="about-values-heading">
-          <div>
-            <p className="about-eyebrow">Ce qui nous guide</p>
-            <h2 id="about-values-title">Nos valeurs</h2>
-          </div>
-          <p>Des principes concrets pour faire grandir la confiance et les échanges.</p>
-        </div>
-        <div className="about-values-grid">
-          {values.map(({ title, description, icon: Icon }) => (
-            <article className="about-value" key={title}>
-              <span className="about-value-icon"><Icon aria-hidden="true" /></span>
+        <div className="home-value-grid">
+          {values.map(({ title, text, icon: Icon }) => (
+            <article className="home-value" key={title}>
+              <span className="home-value-icon"><Icon aria-hidden="true" /></span>
               <h3>{title}</h3>
-              <p>{description}</p>
+              <p>{text}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="about-cta" aria-labelledby="about-cta-title">
-        <div className="about-cta-inner">
-          <p className="about-eyebrow about-eyebrow-light">La suite se construit ensemble</p>
-          <h2 id="about-cta-title">Ensemble, faisons grandir les opportunités agricoles.</h2>
-          <p>
-            Que vous soyez producteur, vendeur ou acheteur, AgricultureConnect vous invite à découvrir une nouvelle manière de connecter les acteurs agricoles grâce au numérique.
-          </p>
-          <div className="about-actions">
-            <Link className="about-button about-button-light" to="/products">
-              Découvrir les produits <ArrowRight aria-hidden="true" />
-            </Link>
-            <Link className="about-button about-button-outline" to="/register">
-              Rejoindre AgricultureConnect
-            </Link>
-          </div>
+      <section className="home-cta" aria-labelledby="home-cta-title">
+        <div className="home-cta-image" aria-hidden="true">
+          <img
+            src="https://images.pexels.com/photos/30255157/pexels-photo-30255157/free-photo-of-aerial-view-of-patchwork-farms-in-mau-narok-kenya.jpeg?auto=compress&cs=tinysrgb&w=1400"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={handleImageError}
+          />
         </div>
-        <div className="about-cta-mark" aria-hidden="true"><Sprout /></div>
+        <div className="home-cta-content">
+          <span className="home-cta-icon"><Handshake aria-hidden="true" /></span>
+          <div>
+            <h2 id="home-cta-title">Ensemble, bâtissons une agriculture connectée et prospère !</h2>
+            <p>Rejoignez AgricultureConnect pour vendre, acheter, louer et découvrir des services agricoles.</p>
+          </div>
+          <Link className="home-button home-button-gold" to="/register">
+            Rejoindre maintenant <ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
       </section>
 
-      <footer className="about-footer">
-        <Link className="about-brand" to="/a-propos">
-          <span className="about-brand-mark" aria-hidden="true"><Sprout /></span>
-          <span>Agriculture<span>Connect</span></span>
-        </Link>
-        <p>Le numérique au service des échanges agricoles.</p>
-        <a href="#debut">Retour en haut ↑</a>
+      <footer className="home-footer">
+        <div className="home-footer-inner">
+          <div className="home-footer-brand">
+            <Link className="home-brand" to="/" aria-label="AgricultureConnect, accueil">
+              <span className="home-brand-mark" aria-hidden="true"><Sprout /></span>
+              <span>Agriculture<span className="home-brand-accent">Connect</span></span>
+            </Link>
+            <p>Le numérique au service des échanges agricoles.</p>
+          </div>
+          <nav className="home-footer-links" aria-label="Liens de pied de page">
+            <Link to="/a-propos">À propos</Link>
+            <Link to="/products?type=produit_agricole">Produits</Link>
+            <Link to="/products?type=materiel_vente">Machines</Link>
+            <Link to="/products?type=service_agricole">Services</Link>
+          </nav>
+          <a className="home-back-top" href="#top">Retour en haut <ArrowDown aria-hidden="true" /></a>
+        </div>
+        <div className="home-footer-bottom">© {new Date().getFullYear()} AgricultureConnect. Tous droits réservés.</div>
       </footer>
     </main>
   );

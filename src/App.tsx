@@ -144,18 +144,11 @@ const buyerRoles: UserRole[] = ['admin', 'acheteur'];
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/a-propos" element={<About />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
+      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="dashboard" element={<RoleDashboardRedirect />} />
         <Route path="dashboard/admin" element={<RoleDashboardRoute role="admin" />} />
         <Route path="dashboard/agriculteur" element={<RoleDashboardRoute role="agriculteur" />} />

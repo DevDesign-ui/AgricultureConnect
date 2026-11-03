@@ -1,8 +1,17 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Package, MapPin, Filter, X } from 'lucide-react';
 import { supabase, Product, Category, Region } from '../lib/supabase';
 import { formatPrice } from '../lib/utils';
+import {
+  filterProductsByOfferType,
+  getOfferPriceUnit,
+  getProductOfferType,
+  isOfferAvailable,
+  PRODUCT_OFFER_TYPES,
+  PRODUCT_OFFER_LABELS,
+  type OfferCatalogFilter,
+} from '../lib/product-offers';
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -17,6 +26,13 @@ export default function Products() {
   const [filterMaxPrice, setFilterMaxPrice] = useState('');
   const [filterAvailable, setFilterAvailable] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [offerFilter, setOfferFilter] = useState<OfferCatalogFilter>(() => {
+    const requestedType = searchParams.get('type');
+    return requestedType === 'tous'
+      ? 'tous'
+      : PRODUCT_OFFER_TYPES.find((type) => type === requestedType) ?? 'tous';
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -34,16 +50,16 @@ export default function Products() {
   }, []);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    return filterProductsByOfferType(products, offerFilter).filter((p) => {
       if (searchName && !p.nom.toLowerCase().includes(searchName.toLowerCase())) return false;
       if (filterCategory && p.categorie_id !== filterCategory) return false;
-      if (filterRegion && p.region !== filterRegion) return false;
+      if (filterRegion && p.region !== filterRegion && !p.zones_intervention?.includes(filterRegion)) return false;
       if (filterMinPrice && Number(p.prix) < Number(filterMinPrice)) return false;
       if (filterMaxPrice && Number(p.prix) > Number(filterMaxPrice)) return false;
-      if (filterAvailable && (!p.disponible || p.stock <= 0)) return false;
+      if (filterAvailable && !isOfferAvailable(p)) return false;
       return true;
     });
-  }, [products, searchName, filterCategory, filterRegion, filterMinPrice, filterMaxPrice, filterAvailable]);
+  }, [products, offerFilter, searchName, filterCategory, filterRegion, filterMinPrice, filterMaxPrice, filterAvailable]);
 
   const hasActiveFilters = filterCategory || filterRegion || filterMinPrice || filterMaxPrice || filterAvailable;
 
@@ -58,8 +74,33 @@ export default function Products() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Produits agricoles</h1>
-        <p className="text-slate-500 mt-1">Recherchez parmi tous les produits disponibles</p>
+        <h1 className="text-2xl font-bold text-slate-900">Marketplace agricole</h1>
+        <p className="text-slate-500 mt-1">Produits, matériel et services agricoles au même endroit</p>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Filtrer par activité">
+        {([
+          { key: 'tous', label: 'Tous' },
+          { key: 'produit_agricole', label: PRODUCT_OFFER_LABELS.produit_agricole },
+          { key: 'materiel_vente', label: PRODUCT_OFFER_LABELS.materiel_vente },
+          { key: 'materiel_location', label: PRODUCT_OFFER_LABELS.materiel_location },
+          { key: 'service_agricole', label: PRODUCT_OFFER_LABELS.service_agricole },
+        ] as { key: OfferCatalogFilter; label: string }[]).map((tab) => (
+          <button
+            key={tab.key}
+            id={`catalog-tab-${tab.key}`}
+            type="button"
+            aria-pressed={offerFilter === tab.key}
+            onClick={() => setOfferFilter(tab.key)}
+            className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+              offerFilter === tab.key
+                ? 'bg-primary-600 text-white'
+                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Search bar */}
@@ -147,7 +188,7 @@ export default function Products() {
                 onChange={(e) => setFilterAvailable(e.target.checked)}
                 className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500"
               />
-              <span className="text-sm font-medium text-slate-700">Disponible uniquement</span>
+              <span className="text-sm font-medium text-slate-700">Offres actives uniquement</span>
             </label>
           </div>
         </div>
@@ -155,10 +196,9 @@ export default function Products() {
 
       {/* Results count */}
       <p className="text-sm text-slate-500">
-        {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} trouvé{filteredProducts.length > 1 ? 's' : ''}
+        {filteredProducts.length} offre{filteredProducts.length > 1 ? 's' : ''} trouvée{filteredProducts.length > 1 ? 's' : ''}
       </p>
 
-      {/* Products grid */}
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -190,9 +230,22 @@ export default function Products() {
                 )}
               </div>
               <div className="p-4">
+                <span className="inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
+                  {PRODUCT_OFFER_LABELS[getProductOfferType(product)]}
+                </span>
                 <h3 className="font-semibold text-slate-900 truncate group-hover:text-primary-600 transition-colors">
                   {product.nom}
                 </h3>
+                {(product.marque || product.modele) && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    {[product.marque, product.modele].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+                {product.type_service && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    {product.type_service.charAt(0).toUpperCase() + product.type_service.slice(1)}
+                  </p>
+                )}
                 {product.region && (
                   <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
                     <MapPin className="w-3 h-3" /> {product.region}
@@ -201,12 +254,19 @@ export default function Products() {
                 <div className="flex items-center justify-between mt-3">
                   <p className="text-lg font-bold text-primary-600">
                     {formatPrice(Number(product.prix))}
-                    <span className="text-xs font-normal text-slate-500">/{product.unite}</span>
+                    <span className="text-xs font-normal text-slate-500">/{getOfferPriceUnit(product)}</span>
                   </p>
-                  <span className={`badge ${product.disponible && product.stock > 0 ? 'badge-green' : 'badge-red'}`}>
-                    {product.disponible && product.stock > 0 ? 'Disponible' : 'Rupture'}
+                  <span className={`badge ${isOfferAvailable(product) ? 'badge-green' : 'badge-red'}`}>
+                    {isOfferAvailable(product)
+                      ? getProductOfferType(product) === 'materiel_location' || getProductOfferType(product) === 'service_agricole'
+                        ? 'Offre publiée'
+                        : 'Disponible'
+                      : 'Indisponible'}
                   </span>
                 </div>
+                {(getProductOfferType(product) === 'materiel_location' || getProductOfferType(product) === 'service_agricole') && (
+                  <p className="mt-2 text-xs font-medium text-amber-700">Réservation non activée</p>
+                )}
               </div>
             </Link>
           ))}

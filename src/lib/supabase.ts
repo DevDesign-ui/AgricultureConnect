@@ -64,10 +64,20 @@ export interface Product {
   id: string;
   user_id: string;
   categorie_id: string | null;
+  type_offre?: ProductOfferType;
   nom: string;
   description: string;
   prix: number;
   unite: string;
+  marque?: string | null;
+  modele?: string | null;
+  etat_materiel?: 'neuf' | 'bon_etat' | 'usage' | null;
+  unite_tarifaire?: string | null;
+  duree_minimum?: number | null;
+  caution?: number | null;
+  conditions_offre?: string | null;
+  type_service?: string | null;
+  zones_intervention?: string[];
   stock: number;
   disponible: boolean;
   region: string;
@@ -75,6 +85,12 @@ export interface Product {
   created_at: string;
   updated_at: string;
 }
+
+export type ProductOfferType =
+  | 'produit_agricole'
+  | 'materiel_vente'
+  | 'materiel_location'
+  | 'service_agricole';
 
 export interface Order {
   id: string;

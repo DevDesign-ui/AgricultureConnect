@@ -120,7 +120,7 @@ export default function Dashboard() {
     ...(profile?.role === 'admin'
       ? [{ label: 'Utilisateurs inscrits', value: stats.totalUsers, icon: Users, color: 'bg-accent-500' }]
       : []),
-    { label: isFarmer ? 'Mes produits agricoles' : isSupplier ? 'Mon catalogue' : 'Produits disponibles', value: stats.totalProducts, icon: Package, color: 'bg-primary-500' },
+    { label: isFarmer ? 'Mes offres agricoles' : isSupplier ? 'Mon catalogue' : 'Offres disponibles', value: stats.totalProducts, icon: Package, color: 'bg-primary-500' },
     { label: isSeller ? 'Mes ventes' : isBuyer ? 'Mes achats' : 'Commandes', value: stats.totalOrders, icon: ShoppingBag, color: 'bg-secondary-500' },
     { label: isBuyer ? 'Montant de mes achats livrés' : isSeller ? 'Revenus de mes ventes' : 'Revenus (livraisons)', value: formatPrice(stats.totalRevenue), icon: TrendingUp, color: 'bg-success-500' },
   ];
@@ -147,12 +147,12 @@ export default function Dashboard() {
       <div className="flex flex-wrap gap-3">
         {isBuyer ? (
           <>
-            <Link to="/products" className="btn-primary">Découvrir les produits</Link>
+            <Link to="/products" className="btn-primary">Explorer la marketplace</Link>
             <Link to="/orders" className="btn-secondary">Suivre mes achats</Link>
           </>
         ) : isSeller ? (
           <>
-            <Link to="/my-products" className="btn-primary">{isFarmer ? 'Gérer mes produits agricoles' : 'Gérer mon catalogue'}</Link>
+            <Link to="/my-products" className="btn-primary">{isFarmer ? 'Gérer mes offres agricoles' : 'Gérer mon catalogue'}</Link>
             <Link to="/orders" className="btn-secondary">{isFarmer ? 'Suivre mes ventes' : 'Voir les commandes clients'}</Link>
           </>
         ) : null}

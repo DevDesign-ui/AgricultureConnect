@@ -5,6 +5,14 @@ import { supabase, Product, Profile } from '../lib/supabase';
 import { loadProductImages } from '../lib/productImages';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, createNotification } from '../lib/utils';
+import {
+  AGRICULTURAL_SERVICES,
+  getOfferPriceUnit,
+  getProductOfferType,
+  isOfferAvailable,
+  isPurchasableOffer,
+  PRODUCT_OFFER_LABELS,
+} from '../lib/product-offers';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -65,6 +73,7 @@ export default function ProductDetail() {
 
   const handleOrder = async () => {
     if (!user || !profile || !product) return;
+    if (!isPurchasableOffer(product)) return;
     setError('');
     setSuccess('');
 
@@ -153,6 +162,9 @@ export default function ProductDetail() {
 
   const productImages = product.images ?? [];
   const activeImage = productImages.includes(selectedImage) ? selectedImage : productImages[0];
+  const offerType = getProductOfferType(product);
+  const purchasable = isPurchasableOffer(product);
+  const serviceLabel = AGRICULTURAL_SERVICES.find((service) => service.value === product.type_service)?.label;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl">
@@ -195,6 +207,9 @@ export default function ProductDetail() {
         <div className="space-y-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{product.nom}</h1>
+            <span className="mt-2 inline-flex rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
+              {PRODUCT_OFFER_LABELS[offerType]}
+            </span>
             {product.region && (
               <p className="text-slate-500 flex items-center gap-1 mt-1">
                 <MapPin className="w-4 h-4" /> {product.region}
@@ -204,14 +219,65 @@ export default function ProductDetail() {
 
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-primary-600">{formatPrice(Number(product.prix))}</span>
-            <span className="text-slate-500">/ {product.unite}</span>
+            <span className="text-slate-500">/ {getOfferPriceUnit(product)}</span>
           </div>
 
-          <div>
-            <span className={`badge ${product.disponible && product.stock > 0 ? 'badge-green' : 'badge-red'}`}>
-              {product.disponible && product.stock > 0 ? `En stock (${product.stock} ${product.unite})` : 'Rupture de stock'}
-            </span>
-          </div>
+          {purchasable
+            ? <div>
+                <span className={`badge ${isOfferAvailable(product) ? 'badge-green' : 'badge-red'}`}>
+                  {isOfferAvailable(product)
+                    ? `${offerType === 'materiel_vente' ? 'Disponible' : 'En stock'} (${product.stock} ${product.unite})`
+                    : 'Indisponible'}
+                </span>
+              </div>
+            : <p className="rounded-lg bg-amber-50 p-3 text-sm font-medium text-amber-800">
+                Offre publiée — les réservations ne sont pas encore activées.
+              </p>}
+
+          {(product.marque || product.modele || product.etat_materiel) && (
+            <div className="rounded-lg border border-slate-200 p-4">
+              <h3 className="font-semibold text-slate-900 mb-2">Détails du matériel</h3>
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                {product.marque && <><dt className="text-slate-500">Marque</dt><dd className="text-slate-800">{product.marque}</dd></>}
+                {product.modele && <><dt className="text-slate-500">Modèle</dt><dd className="text-slate-800">{product.modele}</dd></>}
+                {product.etat_materiel && (
+                  <>
+                    <dt className="text-slate-500">État</dt>
+                    <dd className="text-slate-800">
+                      {product.etat_materiel === 'bon_etat' ? 'Bon état' : product.etat_materiel === 'usage' ? 'Occasion' : 'Neuf'}
+                    </dd>
+                  </>
+                )}
+              </dl>
+            </div>
+          )}
+
+          {(offerType === 'materiel_location' || offerType === 'service_agricole') && (
+            <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+              <h3 className="font-semibold text-slate-900">
+                {offerType === 'materiel_location' ? 'Tarif et conditions de location' : 'Détails de la prestation'}
+              </h3>
+              {serviceLabel && <p className="text-sm text-slate-700">Service : {serviceLabel}</p>}
+              {offerType === 'materiel_location' && product.duree_minimum != null && (
+                <p className="text-sm text-slate-700">Durée minimale : {product.duree_minimum} {product.unite_tarifaire}</p>
+              )}
+              {offerType === 'materiel_location' && product.caution != null && (
+                <p className="text-sm text-slate-700">Caution : {formatPrice(Number(product.caution))}</p>
+              )}
+              {offerType === 'service_agricole' && (product.zones_intervention?.length ?? 0) > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Zones d’intervention</p>
+                  <p className="text-sm text-slate-600">{product.zones_intervention?.join(', ')}</p>
+                </div>
+              )}
+              {product.conditions_offre && (
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Conditions</p>
+                  <p className="text-sm text-slate-600 whitespace-pre-line">{product.conditions_offre}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {product.description && (
             <div>
@@ -223,7 +289,9 @@ export default function ProductDetail() {
           {/* Seller info */}
           {seller && (
             <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-              <p className="text-xs text-slate-500 mb-1">Vendeur</p>
+              <p className="text-xs text-slate-500 mb-1">
+                {offerType === 'service_agricole' ? 'Prestataire' : 'Vendeur / fournisseur'}
+              </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
                   <User className="w-5 h-5 text-primary-600" />
@@ -244,7 +312,7 @@ export default function ProductDetail() {
           )}
 
           {/* Order section */}
-          {user && product.user_id !== user.id && (
+          {user && product.user_id !== user.id && purchasable && (
             <div className="p-4 rounded-lg border-2 border-primary-200 bg-primary-50">
               <h3 className="font-semibold text-slate-900 mb-3">Passer commande</h3>
               {error && <p className="text-sm text-error-600 mb-2">{error}</p>}
